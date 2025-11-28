@@ -13,6 +13,7 @@ from scriptlets._common.get_wan_ip import *
 import yaml
 from scriptlets.warlock.base_app import *
 from scriptlets.warlock.http_service import *
+from scriptlets.warlock.ini_config import *
 from scriptlets.warlock.unreal_config import *
 from scriptlets.warlock.default_run import *
 from scriptlets.steam.steamcmd_check_app_update import *
