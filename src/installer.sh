@@ -6,12 +6,13 @@
 #
 # @LICENSE AGPLv3
 # @AUTHOR  Charlie Powell <cdp1337@bitsnbytes.dev>
+# @AUTHOR  Drew Wort <drew@worttechnologies.tech>
 # @CATEGORY Game Server
 # @TRMM-TIMEOUT 600
-# @WARLOCK-TITLE Game Name
-# @WARLOCK-IMAGE media/some-game-image.webp
-# @WARLOCK-ICON media/some-game-icon.webp
-# @WARLOCK-THUMBNAIL media/some-game-thumbnail.webp
+# @WARLOCK-TITLE Palworld
+# @WARLOCK-IMAGE media/palworld-1920x1080.webp
+# @WARLOCK-ICON media/palworld-128x128.webp
+# @WARLOCK-THUMBNAIL media/palworld-640x360.webp
 #
 # Supports:
 #   Debian 12, 13
@@ -25,27 +26,31 @@
 #
 # Syntax:
 #   MODE_UNINSTALL=--uninstall - Perform an uninstallation
-#   OVERRIDE_DIR=--dir=<path> - Use a custom installation directory instead of the default (optional)
+#   OVERRIDE_DIR=--dir=<str> - Use a custom installation directory instead of the default (optional)
 #   SKIP_FIREWALL=--skip-firewall - Do not install or configure a system firewall
 #   NONINTERACTIVE=--non-interactive - Run the installer in non-interactive mode (useful for scripted installs)
+#   PORT=--port=<int> - Specify a custom port for the game server to use DEFAULT=8211
+#   THREADS=--threads=<int> - Specify the number of threads to allocate to the game server DEFAULT=AUTO
 #
 # Changelog:
-#   20251103 - New installer
+#   20251127 - Migrated to new Warlock baseline
+#   20250331 - Implement management script ported from ARK SA
+#   20250125 - Initial release
 
 ############################################
 ## Parameter Configuration
 ############################################
 
 # Name of the game (used to create the directory)
-INSTALLER_VERSION="v20251127~DEV"
-GAME="GameName"
-GAME_DESC="Game Dedicated Server"
-REPO="your-github/your-repo"
-WARLOCK_GUID="replace-with-guid-once-compiled"
-STEAM_ID="123456789"
+INSTALLER_VERSION="v20251128~DEV"
+GAME="Palworld"
+GAME_DESC="Palworld Dedicated Server"
+REPO="BitsNBytes25/Palworld-Installer"
+WARLOCK_GUID="e4cd1462-87ec-213b-f0fa-7e2a1ba72e2d"
+STEAM_ID="2394010"
 GAME_USER="steam"
 GAME_DIR="/home/${GAME_USER}/${GAME}"
-GAME_SERVICE="your-game-server"
+GAME_SERVICE="palworld-server"
 
 # compile:usage
 # compile:argparse
@@ -60,6 +65,10 @@ GAME_SERVICE="your-game-server"
 # scriptlet:steam/install-steamcmd.sh
 # scriptlet:ufw/install.sh
 
+if [ "$THREADS" == "AUTO" ]; then
+	let "THREADS=$(nproc --all)-1"
+fi
+
 print_header "$GAME_DESC *unofficial* Installer ${INSTALLER_VERSION}"
 
 ############################################
@@ -67,7 +76,7 @@ print_header "$GAME_DESC *unofficial* Installer ${INSTALLER_VERSION}"
 ############################################
 
 ##
-# Install the VEIN game server using Steam
+# Install the game server using Steam
 #
 # Expects the following variables:
 #   GAME_USER    - User account to install the game under
@@ -76,6 +85,9 @@ print_header "$GAME_DESC *unofficial* Installer ${INSTALLER_VERSION}"
 #   GAME_DESC    - Description of the game (for logging purposes)
 #   GAME_SERVICE - Service name to install with Systemd
 #   SAVE_DIR     - Directory to store game save files
+#   PORT         - Port number the game server will use
+#   THREADS	     - Number of threads the game server will use
+#   FIREWALL     - Whether to install and configure a firewall (1 = yes, 0 = no)
 #
 function install_application() {
 	print_header "Performing install_application"
@@ -95,12 +107,16 @@ function install_application() {
 			# No firewall installed, go ahead and install UFW
 			install_ufw
 		fi
+
+		firewall_allow --port ${PORT} --udp --comment "${GAME_DESC} Game Port"
 	fi
 
 	[ -e "$GAME_DIR/AppFiles" ] || sudo -u $GAME_USER mkdir -p "$GAME_DIR/AppFiles"
 
 
 	# download game, use install_steamcmd, or some other install source
+	install_steamcmd
+	/usr/games/steamcmd +force_install_dir $GAME_DIR/AppFiles +login anonymous +app_update ${STEAM_ID} validate +quit
 
 	# Install system service file to be loaded by systemd
     cat > /etc/systemd/system/${GAME_SERVICE}.service <<EOF

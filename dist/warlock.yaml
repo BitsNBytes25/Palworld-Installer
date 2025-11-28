@@ -1,0 +1,21 @@
+- guid: e4cd1462-87ec-213b-f0fa-7e2a1ba72e2d
+  title: Palworld
+  source: github
+  repo: BitsNBytes25/Palworld-Installer
+  installer: dist/installer.sh
+  author: Drew Wort <drew@worttechnologies.tech>
+  category: Game Server
+  supports:
+    - "Debian 12, 13"
+    - "Ubuntu 24.04"
+  syntax:
+    - "--uninstall  - Perform an uninstallation"
+    - "--dir=<str> - Use a custom installation directory instead of the default (optional)"
+    - "--skip-firewall  - Do not install or configure a system firewall"
+    - "--non-interactive  - Run the installer in non-interactive mode (useful for scripted installs)"
+    - "--port=<int> - Specify a custom port for the game server to use DEFAULT=8211"
+    - "--threads=<int> - Specify the number of threads to allocate to the game server DEFAULT=AUTO"
+  image: media/palworld-1920x1080.webp
+  icon: media/palworld-128x128.webp
+  thumbnail: media/palworld-640x360.webp
+

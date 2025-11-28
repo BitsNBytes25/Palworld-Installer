@@ -1,0 +1,39 @@
+[
+    {
+        "$schema": "https://raw.githubusercontent.com/amidaware/community-scripts/main/community_scripts.schema.json",
+        "guid": "e4cd1462-87ec-213b-f0fa-7e2a1ba72e2d",
+        "filename": "installer.sh",
+        "args": [],
+        "env": [],
+        "submittedBy": "Drew Wort <drew@worttechnologies.tech>",
+        "name": "Install Game Server",
+        "syntax": [
+            "--uninstall  - Perform an uninstallation",
+            "--dir=<str> - Use a custom installation directory instead of the default (optional)",
+            "--skip-firewall  - Do not install or configure a system firewall",
+            "--non-interactive  - Run the installer in non-interactive mode (useful for scripted installs)",
+            "--port=<int> - Specify a custom port for the game server to use DEFAULT=8211",
+            "--threads=<int> - Specify the number of threads to allocate to the game server DEFAULT=AUTO"
+        ],
+        "default_timeout": "600",
+        "shell": "shell",
+        "supported_platforms": [
+            "linux"
+        ],
+        "category": "Game Server"
+    },
+    {
+        "$schema": "https://raw.githubusercontent.com/amidaware/community-scripts/main/community_scripts.schema.json",
+        "guid": "68388839-b2f3-60a3-ff4d-0f64bdcc0ff5",
+        "filename": "manage.py",
+        "args": [],
+        "env": [],
+        "submittedBy": "",
+        "name": null,
+        "syntax": [],
+        "default_timeout": "60",
+        "shell": "python",
+        "supported_platforms": [],
+        "category": null
+    }
+]
