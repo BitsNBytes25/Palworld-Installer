@@ -169,24 +169,18 @@ class GameService(HTTPService):
 		Get the primary game process PID of the actual game server, or 0 if not running
 		:return:
 		"""
-
-		# For services that do not have a helper wrapper, it's the same as the process PID
-		return self.get_pid()
-
 		# For services that use a wrapper script, the actual game process will be different and needs looked up.
-		'''
 		# There's no quick way to get the game process PID from systemd,
 		# so use ps to find the process based on the map name
 		processes = subprocess.run([
 			'ps', 'axh', '-o', 'pid,cmd'
 		], stdout=subprocess.PIPE).stdout.decode().strip()
-		exe = os.path.join(here, 'AppFiles/Vein/Binaries/Linux/VeinServer-Linux-')
+		exe = os.path.join(here, 'AppFiles/Pal/Binaries/Linux/')
 		for line in processes.split('\n'):
 			pid, cmd = line.strip().split(' ', 1)
 			if cmd.startswith(exe):
 				return int(line.strip().split(' ')[0])
 		return 0
-		'''
 
 	def send_message(self, message: str):
 		"""

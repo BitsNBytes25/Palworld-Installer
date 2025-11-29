@@ -30,8 +30,7 @@ import shutil
 import base64
 import time
 import configparser
-from pathlib import Path
-from typing import List
+import tempfile
 import argparse
 import re
 
@@ -1696,7 +1695,7 @@ class BaseConfig:
 								option.get('options', None)
 							)
 
-	def add_option(self, name, section, key, default, val_type, help_text, options=None):
+	def add_option(self, name, section, key, default='', val_type='str', help_text='', options=None):
 		"""
 		Add a configuration option to the available list
 
@@ -1744,7 +1743,7 @@ class BaseConfig:
 			return value
 
 	@classmethod
-	def convert_from_system_type(cls, value: Union[str, int, bool], val_type: str) -> str:
+	def convert_from_system_type(cls, value: Union[str, int, bool, list], val_type: str) -> Union[str, list]:
 		"""
 		Convert a system type value to a string for storage
 		:param value:
@@ -1759,6 +1758,12 @@ class BaseConfig:
 				return 'True'
 			else:
 				return 'False'
+		elif val_type == 'list':
+			if isinstance(value, list):
+				return value
+			else:
+				# Assume comma-separated string
+				return [item.strip() for item in str(value).split(',')]
 		else:
 			return str(value)
 
@@ -1970,528 +1975,17 @@ class INIConfig(BaseConfig):
 					break
 				check_path = os.path.dirname(check_path)
 
-class UnrealConfigParser:
-	"""
-	Class to parse and modify Unreal Engine INI configuration files
-	Version 1.2.0
-	Forked from https://github.com/xwoojin/UEConfigParser
-	Licensed under MIT License
-	"""
-	def __init__(self):
-		"""Constructor"""
-		self.content: List[str] = []
-		self.changed = False
-
-	def is_empty(self) -> bool:
-		"""
-		Check if the content is empty
-		"""
-		return len(self.content) == 0
-
-	def is_changed(self) -> bool:
-		"""
-		Check if the content has been changed
-		"""
-		return self.changed
-
-	def is_filename(self, file_path: str):
-		"""
-		Check if the file exists
-		:param file_path: Path to the file
-		"""
-		return Path(file_path).name == file_path
-
-	def read_file(self, file_path: str):
-		"""Read and store file contents
-			Args:
-				file_path: Path to the INI file
-			Raises:
-				FileNotFoundError: If file doesn't exist
-		"""
-		if not os.path.exists(file_path):
-			raise FileNotFoundError(f'File not found: {file_path}')
-
-		with open(file_path, 'r', encoding='utf-8') as file:
-			self.content = file.readlines()
-
-		self.changed = False
-
-	def write_file(self, output_path: str, newline_option=None):
-		"""
-		Writes output to a file with the changes made
-		:param output_path: Path to the output file
-		:param newline_option: Newline character to use. Options: 'None','\n', '\r\n' (default: None)
-		"""
-		file_path = output_path
-		if self.is_filename(output_path):
-			file_path = os.path.join(os.getcwd(), output_path)
-		if not os.path.exists(os.path.dirname(file_path)):
-			try:
-				os.makedirs(os.path.dirname(file_path))
-			except Exception as e:
-				print(f'Directory create error: {file_path}', end='')
-				print(e)
-		try:
-			with open(file_path, 'w', encoding='utf-8', newline=newline_option) as file:
-				file.writelines(self.content)
-			self.changed = False
-		except Exception as e:
-			print(f'File write error: ', end='')
-			print(e)
-			raise
-
-	def is_section(self, line: str, section: str) -> bool:
-		"""
-		Checks if the line is a section
-		:param line: Line to check
-		:param section: Section name to compare
-		"""
-		if line.startswith('[') and line.endswith(']'):
-			current_section = line[1:-1].strip()
-			return current_section == section
-		return False
-
-	def add_key(self, section: str, key: str, value: str):
-		"""
-		Adds a key to a section
-		:param section: Section name to add the key
-		:param key: Key name to add
-		:param value: Value to add
-		"""
-		in_section = False
-		updated_lines = []
-		section_found = False
-		for index, line in enumerate(self.content):
-			stripped = line.strip()
-			if self.is_section(stripped, section):
-				in_section = True
-				section_found = True
-
-			if in_section and (index + 1 == len(self.content) or self.content[index + 1].strip().startswith('[')):
-				# Look-ahead to see if next line is a new section or end of file
-				updated_lines.append(f"{key}={value}\n")
-				self.changed = True
-				in_section = False
-
-			updated_lines.append(line)
-		if not section_found:
-			updated_lines.append(f'\n[{section}]\n')
-			updated_lines.append(f'{key}={value}\n')
-			self.changed = True
-		self.content = updated_lines
-
-	def add_key_after_match(self, section: str, substring: str, new_line: str):
-		"""
-		Adds a new line after the line in the specified section where the substring matches.
-
-		:param section: The section name to search in
-		:param substring: The substring to search for in lines within the section
-		:param new_line: The new line to append after the matched line
-		:raises ValueError: If the section or matching substring is not found
-		"""
-		in_section = False
-		updated_lines = []
-		section_found = False
-		found = False
-		for index, line in enumerate(self.content):
-			stripped = line.strip()
-			if self.is_section(stripped, section):
-				in_section = True
-				section_found = True
-			if in_section and substring in stripped and not found:
-				updated_lines.append(line)  # Add the current line
-				updated_lines.append(new_line + '\n')  # Add the new line after the match
-				self.changed = True
-				found = True
-			else:
-				updated_lines.append(line)
-
-			# If we exit the section
-			if in_section and self.is_section(line, section) and stripped[1:-1] != section:
-				in_section = False
-
-		if not section_found:
-			updated_lines.append(f'\n[{section}]\n')
-			updated_lines.append(f'{new_line}\n')
-			self.changed = True
-		self.content = updated_lines
-
-	def remove_key(self, section: str, key: str):
-		"""
-		Removes a key from a section
-		:param section: Section name to remove the key
-		:param key: Key name to remove
-		"""
-		in_section = False
-		exists = False
-		updated_lines = []
-		for line in self.content:
-			if not exists:
-				stripped = line.strip()
-				if self.is_section(stripped, section):
-					in_section = True
-				elif stripped.startswith('[') and stripped.endswith(']'):
-					in_section = False
-				if in_section and '=' in stripped and not stripped.startswith((';', '#')):
-					current_key, value = map(str.strip, stripped.split('=', 1))
-					if current_key == key:
-						exists = True
-						self.changed = True
-						continue
-			updated_lines.append(line)
-
-		if not exists:
-			return False
-		self.content = updated_lines
-		return True
-
-	def remove_key_by_substring_search(self, section: str, substring: str, search_in_comment=False):
-		"""
-		Removes a key from a section
-		:param section: Section name to remove the key
-		:param key: Key name to remove
-		"""
-		in_section = False
-		exists = False
-		updated_lines = []
-		for line in self.content:
-			if not exists:
-				stripped = line.strip()
-				if self.is_section(stripped, section):
-					in_section = True
-				elif stripped.startswith('[') and stripped.endswith(']'):
-					in_section = False
-				if in_section and '=' in stripped:
-					search = True
-					if stripped.startswith(';') or stripped.startswith('#'):
-						if not search_in_comment:
-							search = False
-					if search:
-						if substring in stripped:
-							exists = True
-							self.changed = True
-							continue
-			updated_lines.append(line)
-
-		if not exists:
-			return False
-		self.content = updated_lines
-		return True
-
-	def replace_value_with_same_key(self, section: str, key: str, new_value: str, spacing=False):
-		"""
-		Modifies the value of a key in a section
-		:param section: Section name to modify
-		:param key: Key name to modify
-		:param new_value: New value to set
-		:param spacing: Add space between key and the value (default: False)
-		"""
-		in_section = False
-		exists = False
-		updated_lines = []
-		for line in self.content:
-			if not exists:
-				stripped = line.strip()
-				if self.is_section(stripped, section):
-					in_section = True
-				elif stripped.startswith('[') and stripped.endswith(']'):
-					in_section = False
-				if in_section and '=' in stripped and not stripped.startswith((';', '#')):
-					current_key, value = map(str.strip, stripped.split('=', 1))
-					if current_key == key:
-						if spacing:
-							line = f'{key} = {new_value}\n'
-						else:
-							line = f'{key}={new_value}\n'
-						self.changed = True
-						exists = True
-			updated_lines.append(line)
-
-		if not exists:
-			return False
-		self.content = updated_lines
-		return True
-
-	def comment_key(self, section: str, key: str):
-		"""
-		Disables a key by commenting it out
-		:param section: Section name to modify
-		:param key: Key name to disable
-		"""
-		in_section = False
-		exists = False
-		updated_lines = []
-		for line in self.content:
-			if not exists:
-				stripped = line.strip()
-				if self.is_section(stripped, section):
-					in_section = True
-				elif stripped.startswith('[') and stripped.endswith(']'):
-					in_section = False
-				if in_section and '=' in stripped and not stripped.startswith((';', '#')):
-					current_key, value = map(str.strip, stripped.split('=', 1))
-					if current_key == key:
-						line = f';{line}'
-						self.changed = True
-						exists = True
-			updated_lines.append(line)
-		if not exists:
-			return False
-		self.content = updated_lines
-		return True
-
-	def uncomment_key(self, section: str, key: str):
-		"""
-		Enables a key by uncommenting it
-		:param section: Section name to modify
-		:param key: Key name to enable
-		"""
-		in_section = False
-		exists = False
-		updated_lines = []
-		for line in self.content:
-			if not exists:
-				stripped = line.strip()
-				if self.is_section(stripped, section):
-					in_section = True
-				elif stripped.startswith('[') and stripped.endswith(']'):
-					in_section = False
-				if in_section and stripped.startswith(';') and '=' in stripped:
-					uncommented_line = stripped[1:].strip()
-					current_key, value = map(str.strip, uncommented_line.split('=', 1))
-					if current_key == key:
-						line = uncommented_line + '\n'
-						self.changed = True
-						exists = True
-			updated_lines.append(line)
-		if not exists:
-			return False
-		self.content = updated_lines
-		return True
-
-	def set_value_by_substring_search(self, section: str, match_substring: str, new_value: str, search_in_comment=False):
-		"""
-		Updates the value of any key in the given section if the full 'key=value' string contains the match_substring. (even partial match)
-
-		:param section: The section to search in.
-		:param match_substring: The substring to match within the 'key=value' string.
-		:param new_value: The new value to set if the substring matches.
-		"""
-		in_section = False
-		updated_lines = []
-		exists = False
-
-		for line in self.content:
-			search = True
-			updated = False
-			if not exists:
-				stripped = line.strip()
-				if self.is_section(stripped, section):
-					in_section = True
-				elif stripped.startswith('[') and stripped.endswith(']'):
-					in_section = False
-				if in_section and '=' in stripped:
-					if stripped.startswith((';', '#')):
-						if not search_in_comment:
-							search = False
-					if search:
-						key, value = map(str.strip, stripped.split('=', 1))
-						if match_substring in stripped:
-							line = f'{key}={new_value}\n'
-							self.changed = True
-							exists = True
-			updated_lines.append(line)
-
-		if not exists:
-			return False
-		self.content = updated_lines
-		return True
-
-	def comment_by_substring_search(self, section: str, match_substring: str, search_in_comment=False):
-		"""
-		comment entire key if value is matched in given section  (even partial match)
-
-		:param section: The section to search in.
-		:param key: The key whose value needs to be updated.
-		:param match_substring: The substring to match in the current value.
-		"""
-		in_section = False
-		exists = False
-		updated_lines = []
-
-		for line in self.content:
-			if not exists:
-				stripped = line.strip()
-				if self.is_section(stripped, section):
-					in_section = True
-				elif stripped.startswith('[') and stripped.endswith(']'):
-					in_section = False
-				if in_section and '=' in stripped and not exists:
-					search = True
-					if stripped.startswith(';') or stripped.startswith('#'):
-						if not search_in_comment:
-							search = False
-					if search:
-						current_key, value = map(str.strip, stripped.split('=', 1))
-						if match_substring in value:
-							line = f';{line}'
-							self.changed = True
-							exists = True
-			updated_lines.append(line)
-
-		if not exists:
-			return False
-		self.content = updated_lines
-		return True
-
-	def uncomment_by_substring_search(self, section: str, match_substring: str):
-		"""
-		uncomment entire key if value is matched in given section  (even partial match)
-
-		:param section: The section to search in.
-		:param match_substring: The substring to match in the current value.
-		"""
-		in_section = False
-		exists = False
-		updated_lines = []
-
-		for line in self.content:
-			if not exists:
-				stripped = line.strip()
-				if self.is_section(stripped, section):
-					in_section = True
-				elif stripped.startswith('[') and stripped.endswith(']'):
-					in_section = False
-				if in_section and stripped.startswith(';'):
-					uncommented_line = stripped[1:].strip()
-					if match_substring in stripped:
-						line = uncommented_line + '\n'
-						self.changed = True
-						exists = True
-			updated_lines.append(line)
-
-		if not exists:
-			return False
-		self.content = updated_lines
-		return True
-
-	def replace_value_by_substring_search(self, section: str, match_substring: str, new_substring: str, search_in_comment=False):
-		"""
-		Replaces a substring in the values as it treats key=value entire line as a single string within a given section.
-
-		:param section: The section to search in.
-		:param match_substring: The substring to match in the current value.
-		:param new_substring: The new substring to replace the match.
-		"""
-		in_section = False
-		exists = False
-		updated_lines = []
-		for line in self.content:
-			search = True
-			found = False
-			stripped = line.strip()
-			if not exists:
-				if self.is_section(stripped, section):
-					in_section = True
-				elif stripped.startswith('[') and stripped.endswith(']'):
-					in_section = False
-				if in_section and '=' in stripped:
-					if stripped.startswith(';') or stripped.startswith('#'):
-						if not search_in_comment:
-							search = False
-					if search:
-						if match_substring in stripped:
-							line = stripped.replace(match_substring, new_substring) + '\n'
-							self.changed = True
-							exists = True
-							found = True
-			updated_lines.append(line)
-
-		if not exists:
-			return False
-		self.content = updated_lines
-		return True
-
-	def display(self):
-		"""
-		Prints the lines to the console
-		"""
-		for line in self.content:
-			print(line, end='')
-		print(' ')
-
-	def get_key(self, section: str, key: str, default: str = '') -> str:
-		"""
-		Get the value of a requested section/key.
-
-		:param section: Section name to modify
-		:param key: Key name to retrieve
-		:param default: Default value if key not found
-
-		:return: Value of the key or default if not found
-		"""
-		in_section = False
-		for line in self.content:
-			stripped = line.strip()
-			if self.is_section(stripped, section):
-				in_section = True
-			elif stripped.startswith('[') and stripped.endswith(']'):
-				in_section = False
-
-			if in_section and '=' in stripped:
-				uncommented_line = stripped[1:].strip() if stripped.startswith(';') else stripped
-				current_key, value = map(str.strip, uncommented_line.split('=', 1))
-				if current_key == key:
-					return value
-
-		return default
-
-	def set_key(self, section: str, key: str, value: str):
-		"""
-		Sets a key/value pair to a section, creating it if necessary
-
-		:param section: Section name to add the key
-		:param key: Key name to add
-		:param value: Value to add
-		"""
-		in_section = False
-		updated_lines = []
-		found = False
-		for line in self.content:
-			stripped = line.strip()
-			if self.is_section(stripped, section):
-				in_section = True
-			elif stripped.startswith('[') and stripped.endswith(']'):
-				in_section = False
-
-			if in_section and '=' in stripped:
-				if stripped.startswith(';'):
-					uncommented_line = stripped[1:].strip()
-					commented = True
-				else:
-					uncommented_line = stripped
-					commented = False
-				current_key, prev_value = map(str.strip, uncommented_line.split('=', 1))
-				if current_key == key:
-					# Key found; replace the line with the new value
-					line = ';' if commented else '' + f"{key}={value}\n"
-					self.changed = prev_value != value
-					found = True
-			updated_lines.append(line)
-
-		if found:
-			self.content = updated_lines
-		else:
-			self.add_key(section, key, value)
-
 
 class UnrealConfig(BaseConfig):
 	def __init__(self, group_name: str, path: str):
 		super().__init__(group_name)
 		self.path = path
-		self.parser = UnrealConfigParser()
+		self._data = []
+		self._values = {}
+		self._use_array_operators = False
+		self._is_changed = False
 
-	def get_value(self, name: str) -> Union[str, int, bool]:
+	def get_value(self, name: str) -> Union[str, int, bool, list]:
 		"""
 		Get a configuration option from the config
 
@@ -2505,12 +1999,100 @@ class UnrealConfig(BaseConfig):
 		section = self.options[name][0]
 		key = self.options[name][1]
 		default = self.options[name][2]
-		type = self.options[name][3]
-		val = self.parser.get_key(section, key, default)
+		val_type = self.options[name][3]
+		if section not in self._values:
+			val = default
+		else:
+			if '/' in key:
+				# Struct key
+				parts = key.split('/')
+				current = self._values[section]
+				for part in parts:
+					if part in current:
+						current = current[part]
+					else:
+						current = default
+						break
+				val = current
+			elif key not in self._values[section]:
+				val = default
+			else:
+				val = self._values[section][key]
 
-		return BaseConfig.convert_to_system_type(val, type)
+		return BaseConfig.convert_to_system_type(val, val_type)
 
-	def set_value(self, name: str, value: Union[str, int, bool]):
+	def _find_or_create_value(self, section: list, key: str, str_value: Union[str, list]) -> list:
+		"""
+		Find or create a keyvalue in a given section
+		and return the full section data.
+
+		:param section:
+		:param key:
+		:param str_value:
+		:return:
+		"""
+		found = False
+		new_data = []
+		for item in section:
+			if item['type'] == 'keyvalue' and item['key'] == key:
+				if found:
+					# This key has already been handled, so skip any more of them.
+					continue
+				if isinstance(str_value, list):
+					# Multiple values, need to handle duplicates
+					c = 0
+					for val in str_value:
+						if c > 0 and self._use_array_operators:
+							new_data.append({'type': 'keyvalue', 'key': key, 'value': val, 'op': '+'})
+						else:
+							new_data.append({'type': 'keyvalue', 'key': key, 'value': val})
+						c += 1
+				else:
+					# Simple value
+					new_data.append({'type': 'keyvalue', 'key': key, 'value': str_value})
+				found = True
+			else:
+				new_data.append(item)
+		if not found:
+			new_data.append({'type': 'keyvalue', 'key': key, 'value': str_value})
+
+		return new_data
+
+	def _find_or_create_struct_value(self, section: list, key: str, str_value: Union[str, list]) -> list:
+		"""
+		Find or create an idividual struct keyvalue in a given section
+		and return the full section data.
+
+		:param section:
+		:param key:
+		:param str_value:
+		:return:
+		"""
+		found = False
+		group = key.split('/')[0]
+		key = key.split('/')[1]
+		new_data = []
+
+		for item in section:
+			if item['type'] == 'keystruct' and item['key'] == group:
+				if found:
+					# This key has already been handled, so skip any more of them.
+					continue
+				else:
+					# Update the struct value
+					struct_data = item['value']
+					struct_data[key] = str_value
+					new_data.append({'type': 'keystruct', 'key': group, 'value': struct_data})
+					found = True
+			else:
+				new_data.append(item)
+		if not found:
+			struct_data = {key: str_value}
+			new_data.append({'type': 'keystruct', 'key': group, 'value': struct_data})
+
+		return new_data
+
+	def set_value(self, name: str, value: Union[str, int, bool, list, float]):
 		"""
 		Set a configuration option in the config
 
@@ -2526,7 +2108,30 @@ class UnrealConfig(BaseConfig):
 		key = self.options[name][1]
 		val_type = self.options[name][3]
 		str_value = BaseConfig.convert_from_system_type(value, val_type)
-		self.parser.set_key(section, key, str_value)
+
+		if section not in self._values:
+			# Create the section
+			self._values[section] = {}
+			self._data.append([{'type': 'section', 'value': section}])
+
+		# Ensure the updated value is in the data structure
+		# First, find the section in the data
+		new_data = []
+		for sec in self._data:
+			if sec[0]['type'] == 'section' and sec[0]['value'] == section:
+				if '/' in key:
+					# Struct key
+					new_data.append(self._find_or_create_struct_value(sec, key, str_value))
+				else:
+					# Found it, add the keyvalue or update existing
+					new_data.append(self._find_or_create_value(sec, key, str_value))
+			else:
+				# Not matched, but keep the data
+				new_data.append(sec)
+
+		self._data = new_data
+		self._values[section][key] = str_value
+		self._is_changed = True
 
 	def has_value(self, name: str) -> bool:
 		"""
@@ -2540,7 +2145,13 @@ class UnrealConfig(BaseConfig):
 
 		section = self.options[name][0]
 		key = self.options[name][1]
-		return self.parser.get_key(section, key, '') != ''
+		if section not in self._values:
+			return False
+		else:
+			if key not in self._values[section]:
+				return False
+			else:
+				return self._values[section][key] != ''
 
 	def exists(self) -> bool:
 		"""
@@ -2555,33 +2166,299 @@ class UnrealConfig(BaseConfig):
 		:return:
 		"""
 		if os.path.exists(self.path):
-			self.parser.read_file(self.path)
+			with open(self.path, 'r', encoding='utf-8') as f:
+				section = []
+				last_section = ''
+				for line in f.readlines():
+					data = None
+					stripped = line.strip()
+					if stripped == '':
+						continue
+					elif stripped.startswith(';'):
+						# Comment line
+						data = {'type': 'comment', 'value': stripped[1:].strip()}
+					elif stripped.startswith('[') and stripped.endswith(']'):
+						# Section header
+						data = {'type': 'section', 'value': stripped[1:-1].strip()}
+					elif '=' in stripped:
+						# Key-value pair
+						parts = stripped.split('=', 1)
+						key = parts[0].strip()
+						value = parts[1].strip()
+						if key.startswith('+'):
+							# Array operator detected
+							self._use_array_operators = True
+							op = key[0]
+							key = key[1:].strip()
+							data = {'type': 'keyvalue', 'key': key, 'value': value, 'op': op}
+						elif value.startswith('(') and value.endswith(')'):
+							# Struct detected
+							struct_str = value[1:-1].strip()
+							struct_data = self._parse_struct(struct_str)
+							data = {'type': 'keystruct', 'key': key, 'value': struct_data}
+						else:
+							data = {'type': 'keyvalue', 'key': key, 'value': value}
+
+					if data is not None:
+						if data['type'] == 'section':
+							# New section!
+							if len(section) > 0:
+								self._data.append(section)
+							section = []
+							section.append(data)
+							last_section = data['value']
+						elif data['type'] == 'keystruct':
+							section.append(data)
+							if last_section not in self._values:
+								self._values[last_section] = {}
+							self._values[last_section][data['key']] = data['value']
+						elif data['type'] == 'keyvalue':
+							section.append(data)
+							if last_section not in self._values:
+								self._values[last_section] = {}
+							# Auto-handle duplicate keys by converting them to a list.
+							# UE is weird.
+							if data['key'] in self._values[last_section]:
+								# Existing key, convert to list
+								existing_value = self._values[last_section][data['key']]
+								if not isinstance(existing_value, list):
+									existing_value = [existing_value]
+								existing_value.append(data['value'])
+								self._values[last_section][data['key']] = existing_value
+							else:
+								self._values[last_section][data['key']] = data['value']
+						else:
+							section.append(data)
+				if len(section) > 0:
+					self._data.append(section)
+		self._is_changed = False
+
+	def _parse_struct(self, struct_str: str) -> dict:
+		"""
+		Parse a UE struct string into a dictionary
+
+		:param struct_str:
+		:return:
+		"""
+		result = {}
+		key = ''
+		sub_key = ''
+		buffer = ''
+		quote = None
+		group = None
+		vals = []
+		for c in struct_str:
+			if c in ('"', "'") and quote is None:
+				# Quote start
+				quote = c
+				continue
+			elif quote is not None and c == quote:
+				# Quote end
+				quote = None
+				continue
+			elif quote is not None:
+				# Quoted text, (skip parsing)
+				buffer += c
+				continue
+
+			if c == '(':
+				group = c
+				continue
+			elif c == ')' and group is not None:
+				group = None
+				#if buffer != '':
+				if sub_key != '':
+					if isinstance(vals, list):
+						# This needs to be a dictionary in this case.
+						vals = {}
+					vals[sub_key] = buffer
+					sub_key = ''
+				else:
+					vals.append(buffer)
+
+				if key == '':
+					# This is a list of values, not a dictionary.
+					if isinstance(result, dict):
+						result = []
+					result.append(vals)
+				else:
+					result[key] = vals
+				vals = []
+				buffer = ''
+				key = ''
+				continue
+
+			if c == '=' and buffer != '':
+				if group is not None:
+					# When inside a group, this indicates it's a dict.
+					sub_key = buffer
+				else:
+					key = buffer
+				buffer = ''
+			elif c == ',':
+				if sub_key != '':
+					if isinstance(vals, list):
+						# This needs to be a dictionary in this case.
+						vals = {}
+					vals[sub_key] = buffer
+					sub_key = ''
+				elif key != '':
+					if group is not None:
+						# Inside a group, usually a list
+						vals.append(buffer)
+					else:
+						result[key] = buffer
+						key = ''
+				buffer = ''
+			else:
+				buffer += c
+		if key != '':
+			result[key] = buffer
+		return result
+
+	def _pack_struct(self, struct_data: dict) -> str:
+		"""
+		Pack a dictionary into a UE struct string
+
+		:param struct_data:
+		:return:
+		"""
+		parts = []
+		if isinstance(struct_data, list):
+			# List of values
+			for value in struct_data:
+				if isinstance(value, dict):
+					val_str = self._pack_struct(value)
+				elif value == '' or ':' in value or ',' in value:
+					# Needs quoting
+					val_str = '"%s"' % value.replace('"', '\\"')
+				else:
+					val_str = value
+				parts.append(val_str)
+			return '(' + ','.join(parts) + ')'
+		else:
+			for key in struct_data:
+				value = struct_data[key]
+				if isinstance(value, list):
+					val_str = '(' + ','.join(value) + ')'
+				elif value == '' or ':' in value or ',' in value or '_' in value or ' ' in value:
+					# Needs quoting
+					val_str = '"%s"' % value.replace('"', '\\"')
+				else:
+					val_str = value
+				parts.append('%s=%s' % (key, val_str))
+			return '(' + ','.join(parts) + ')'
+
+	def fetch(self) -> str:
+		"""
+		Render the configuration file to a string, used in saving back to the disk.
+
+		:return:
+		"""
+		output_lines = []
+		for section in self._data:
+			for item in section:
+				if item['type'] == 'comment':
+					output_lines.append('; %s' % item['value'])
+				elif item['type'] == 'section':
+					if len(output_lines) > 0:
+						output_lines.append('')  # Blank line before new section
+					output_lines.append('[%s]' % item['value'])
+				elif item['type'] == 'keyvalue':
+					if 'op' in item:
+						output_lines.append('%s%s=%s' % (item['op'], item['key'], item['value']))
+					else:
+						output_lines.append('%s=%s' % (item['key'], item['value']))
+				elif item['type'] == 'keystruct':
+					struct_str = self._pack_struct(item['value'])
+					output_lines.append('%s=%s' % (item['key'], struct_str))
+		return '\n'.join(output_lines).strip() + '\n'
 
 	def save(self):
 		"""
 		Save the configuration file back to disk
 		:return:
 		"""
-		if self.parser.is_changed():
-			gid = None
-			uid = None
-			chown = False
+		if not self._is_changed:
+			# No changes, skip save
+			return
 
-			if os.geteuid() == 0:
-				# Determine game user based on parent directories
-				check_path = os.path.dirname(self.path)
-				while check_path != '/' and check_path != '':
-					if os.path.exists(check_path):
-						stat_info = os.stat(check_path)
-						uid = stat_info.st_uid
-						gid = stat_info.st_gid
-						chown = True
-						break
-					check_path = os.path.dirname(check_path)
+		gid = None
+		uid = None
+		chown = False
 
-			self.parser.write_file(self.path)
-			if chown:
-				os.chown(self.path, uid, gid)
+		if os.geteuid() == 0:
+			# Determine game user based on parent directories
+			check_path = os.path.dirname(self.path)
+			while check_path != '/' and check_path != '':
+				if os.path.exists(check_path):
+					stat_info = os.stat(check_path)
+					uid = stat_info.st_uid
+					gid = stat_info.st_gid
+					chown = True
+					break
+				check_path = os.path.dirname(check_path)
+
+		# Prepare atomic write to a temporary file in the same directory
+		dirname = os.path.dirname(self.path) or '.'
+		temp_file = None
+		try:
+			# Determine mode to use for the new file. If target exists use its mode, otherwise default to 0o644
+			if os.path.exists(self.path):
+				target_mode = os.stat(self.path).st_mode & 0o777
+			else:
+				# Try to inherit from parent dir if possible
+				try:
+					parent_mode = os.stat(dirname).st_mode & 0o777
+					# Use a sensible default based on parent directory while respecting the process umask.
+					prev_umask = os.umask(0)
+					try:
+						target_mode = parent_mode & (~prev_umask)
+					finally:
+						# Restore the previous umask immediately
+						os.umask(prev_umask)
+				except Exception:
+					target_mode = 0o644
+
+			# Create a NamedTemporaryFile in same directory; do not delete automatically
+			tf = tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', dir=dirname, delete=False)
+			temp_file = tf.name
+			try:
+				# Write contents and flush to disk
+				tf.write(self.fetch())
+				tf.flush()
+				os.fsync(tf.fileno())
+			finally:
+				tf.close()
+
+			# Set permissions on the temp file to match target_mode
+			try:
+				os.chmod(temp_file, target_mode)
+			except Exception:
+				# chmod failure is non-fatal, proceed
+				pass
+
+			# Atomically replace target with temp file
+			os.replace(temp_file, self.path)
+			temp_file = None
+
+			# Restore ownership if required
+			if chown and uid is not None and gid is not None:
+				try:
+					os.chown(self.path, uid, gid)
+				except PermissionError:
+					# If we can't chown, proceed silently
+					pass
+			# Mark as clean
+			self._is_changed = False
+		except Exception:
+			# Cleanup temporary file on error
+			if temp_file and os.path.exists(temp_file):
+				try:
+					os.unlink(temp_file)
+				except Exception:
+					pass
+			raise
 
 
 def menu_get_services(game):
@@ -3263,24 +3140,18 @@ class GameService(HTTPService):
 		Get the primary game process PID of the actual game server, or 0 if not running
 		:return:
 		"""
-
-		# For services that do not have a helper wrapper, it's the same as the process PID
-		return self.get_pid()
-
 		# For services that use a wrapper script, the actual game process will be different and needs looked up.
-		'''
 		# There's no quick way to get the game process PID from systemd,
 		# so use ps to find the process based on the map name
 		processes = subprocess.run([
 			'ps', 'axh', '-o', 'pid,cmd'
 		], stdout=subprocess.PIPE).stdout.decode().strip()
-		exe = os.path.join(here, 'AppFiles/Vein/Binaries/Linux/VeinServer-Linux-')
+		exe = os.path.join(here, 'AppFiles/Pal/Binaries/Linux/')
 		for line in processes.split('\n'):
 			pid, cmd = line.strip().split(' ', 1)
 			if cmd.startswith(exe):
 				return int(line.strip().split(' ')[0])
 		return 0
-		'''
 
 	def send_message(self, message: str):
 		"""

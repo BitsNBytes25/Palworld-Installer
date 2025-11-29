@@ -116,7 +116,7 @@ function install_application() {
 
 	# download game, use install_steamcmd, or some other install source
 	install_steamcmd
-	/usr/games/steamcmd +force_install_dir $GAME_DIR/AppFiles +login anonymous +app_update ${STEAM_ID} validate +quit
+	sudo -u $GAME_USER /usr/games/steamcmd +force_install_dir $GAME_DIR/AppFiles +login anonymous +app_update ${STEAM_ID} validate +quit
 
 	# Install system service file to be loaded by systemd
     cat > /etc/systemd/system/${GAME_SERVICE}.service <<EOF
@@ -164,6 +164,7 @@ function install_management() {
 	cat > "$GAME_DIR/configs.yaml" <<EOF
 # script:configs.yaml
 EOF
+	chown $GAME_USER:$GAME_USER "$GAME_DIR/configs.yaml"
 
 	# If a pyenv is required:
 	sudo -u $GAME_USER python3 -m venv "$GAME_DIR/.venv"
@@ -173,6 +174,13 @@ EOF
 
 function postinstall() {
 	print_header "Performing postinstall"
+
+	# Ensure configuration file exists, (Palworld doesn't do a great job at filling in incomplete configs)
+	[ -d "$GAME_DIR/AppFiles/Pal/Saved/Config/LinuxServer" ] || \
+		sudo -u $GAME_USER mkdir -p "$GAME_DIR/AppFiles/Pal/Saved/Config/LinuxServer"
+
+	[ -e "$GAME_DIR/AppFiles/Pal/Saved/Config/LinuxServer/PalWorldSettings.ini" ] || \
+		sudo -u $GAME_USER cp "$GAME_DIR/AppFiles/DefaultPalWorldSettings.ini" "$GAME_DIR/AppFiles/Pal/Saved/Config/LinuxServer/PalWorldSettings.ini"
 
 	# First run setup
 	$GAME_DIR/manage.py --first-run

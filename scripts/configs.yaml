@@ -1,134 +1,139 @@
 world:
   - name: Admin Password
     section: /Script/Pal.PalGameWorldSettings
-    key: AdminPassword
+    key: OptionSettings/AdminPassword
     type: str
     help: "Password required to access admin commands in-game."
   - name: Base Camp Max Num In Guild
     section: /Script/Pal.PalGameWorldSettings
-    key: BaseCampMaxNumInGuild
+    key: OptionSettings/BaseCampMaxNumInGuild
     type: int
     default: 4
     help: "Maximum number of base camps allowed per guild."
   - name: Base Camp Worker Max Num
     section: /Script/Pal.PalGameWorldSettings
-    key: BaseCampWorkerMaxNum
+    key: OptionSettings/BaseCampWorkerMaxNum
     type: int
     help: "Maximum number of PAL workers allowed per base camp."
   - name: Allow Global Palbox Export
     section: /Script/Pal.PalGameWorldSettings
-    key: bAllowGlobalPalboxExport
+    key: OptionSettings/bAllowGlobalPalboxExport
     type: bool
     help: "If true, allows exporting PAL boxes globally across the server."
   - name: Allow Global Palbox Import
     section: /Script/Pal.PalGameWorldSettings
-    key: bAllowGlobalPalboxImport
+    key: OptionSettings/bAllowGlobalPalboxImport
     type: bool
     help: "If true, allows importing PAL boxes globally across the server."
   - name: Build Area Limit
     section: /Script/Pal.PalGameWorldSettings
-    key: bBuildAreaLimit
+    key: OptionSettings/bBuildAreaLimit
     type: bool
     help: "Prohibit building near structures such as fast travel"
   - name: Character Recreate in Hardcore
     section: /Script/Pal.PalGameWorldSettings
-    key: bCharacterRecreateInHardcore
+    key: OptionSettings/bCharacterRecreateInHardcore
     type: bool
     help: "If true, allows players to recreate their character upon death in hardcore mode."
   - name: Enable Fast Travel
     section: /Script/Pal.PalGameWorldSettings
-    key: bEnableFastTravel
+    key: OptionSettings/bEnableFastTravel
     type: bool
     help: "If true, enables fast travel functionality in the game."
   - name: Enable Invader Enemy
     section: /Script/Pal.PalGameWorldSettings
-    key: bEnableInvaderEnemy
+    key: OptionSettings/bEnableInvaderEnemy
     type: bool
     help: "If true, enables invader enemies to spawn in the game world."
   - name: Hardcore
     section: /Script/Pal.PalGameWorldSettings
-    key: bHardcore
+    key: OptionSettings/bHardcore
     type: bool
     help: "If true, enables hardcore mode where players face permanent death."
   - name: Invisible Other Guild Base Camp Area FX
     section: /Script/Pal.PalGameWorldSettings
-    key: bInvisibleOtherGuildBaseCampAreaFX
+    key: OptionSettings/bInvisibleOtherGuildBaseCampAreaFX
     type: bool
     help: "If true, makes the base camp area effects of other guilds invisible."
   - name: Show Join Left Message
     section: /Script/Pal.PalGameWorldSettings
-    key: bIsShowJoinLeftMessage
+    key: OptionSettings/bIsShowJoinLeftMessage
     type: bool
     help: "If true, displays messages when players join or leave the server."
   - name: Randomizer Pal Level Random
     section: /Script/Pal.PalGameWorldSettings
-    key: bIsRandomizerPalLevelRandom
+    key: OptionSettings/bIsRandomizerPalLevelRandom
     type: bool
     help: "If true, randomizes the levels of PALs in the game."
   - name: Use Backup Save Data
     section: /Script/Pal.PalGameWorldSettings
-    key: bIsUseBackupSaveData
+    key: OptionSettings/bIsUseBackupSaveData
     type: bool
     help: "If true, the server will use backup save data in case of corruption."
   - name: PAL Lost
     section: /Script/Pal.PalGameWorldSettings
-    key: bPalLost
+    key: OptionSettings/bPalLost
     type: bool
     help: "Permanent lost your Pals upon death"
   - name: Show Player List
     section: /Script/Pal.PalGameWorldSettings
-    key: bShowPlayerList
+    key: OptionSettings/bShowPlayerList
     type: bool
     help: "If true, enables the in-game player list display."
   - name: Build Object Damage Rate
     section: /Script/Pal.PalGameWorldSettings
-    key: BuildObjectDamageRate
+    key: OptionSettings/BuildObjectDamageRate
     type: float
     default: 1.0
     help: "Multiplier for the damage rate of buildable objects."
   - name: Build Object Deterioration Damage Rate
     section: /Script/Pal.PalGameWorldSettings
-    key: BuildObjectDeteriorationDamageRate
+    key: OptionSettings/BuildObjectDeteriorationDamageRate
     type: float
     default: 1.0
     help: "Multiplier for the deterioration damage rate of buildable objects."
   - name: Chat Post Limit per Minute
     section: /Script/Pal.PalGameWorldSettings
-    key: ChatPostLimitPerMinute
+    key: OptionSettings/ChatPostLimitPerMinute
     type: int
     help: "Maximum number of chat messages a player can send per minute."
   - name: Collection Drop Rate
     section: /Script/Pal.PalGameWorldSettings
-    key: CollectionDropRate
+    key: OptionSettings/CollectionDropRate
     type: float
     default: 1.0
     help: "Multiplier for the drop rate of collection items."
   - name: Collection Object Hp Rate
     section: /Script/Pal.PalGameWorldSettings
-    key: CollectionObjectHpRate
+    key: OptionSettings/CollectionObjectHpRate
     type: float
     default: 1.0
     help: "Multiplier for the health points of collection objects."
   - name: Collection Object Respawn Speed Rate
     section: /Script/Pal.PalGameWorldSettings
-    key: CollectionObjectRespawnSpeedRate
+    key: OptionSettings/CollectionObjectRespawnSpeedRate
     type: float
     default: 1.0
     help: "Multiplier for the respawn speed of collection objects."
   - name: Crossplay Platforms
     section: /Script/Pal.PalGameWorldSettings
-    key: CrossplayPlatforms
-    type: str
-    help: "Comma-separated list of platforms allowed for crossplay (e.g., Steam,Xbox,PS5,Mac)."
+    key: OptionSettings/CrossplayPlatforms
+    type: list
+    options:
+      - Steam
+      - Xbox
+      - PS5
+      - Mac
+    help: "List of platforms allowed to connect to this server"
   - name: Day Time Speed Rate
     section: /Script/Pal.PalGameWorldSettings
-    key: DayTimeSpeedRate
+    key: OptionSettings/DayTimeSpeedRate
     type: float
     default: 1.0
     help: "Multiplier for the speed of daytime in the game world."
   - name: Death Penalty
     section: /Script/Pal.PalGameWorldSettings
-    key: DeathPenalty
+    key: OptionSettings/DeathPenalty
     type: str
     options:
       - None
@@ -138,42 +143,42 @@ world:
     help: "Death Penalty dropped items"
   - name: Enemy Drop Item Rate
     section: /Script/Pal.PalGameWorldSettings
-    key: EnemyDropItemRate
+    key: OptionSettings/EnemyDropItemRate
     type: float
     default: 1.0
     help: "Multiplier for the drop rate of items from enemies."
   - name: Equipment Durability Damage Rate
     section: /Script/Pal.PalGameWorldSettings
-    key: EquipmentDurabilityDamageRate
+    key: OptionSettings/EquipmentDurabilityDamageRate
     type: float
     default: 1.0
     help: "Multiplier for the durability damage rate of equipment."
   - name: EXP Rate
     section: /Script/Pal.PalGameWorldSettings
-    key: ExpRate
+    key: OptionSettings/ExpRate
     type: float
     default: 1.0
     help: "Multiplier for the experience points gained by players."
   - name: Guild Player Max Num
     section: /Script/Pal.PalGameWorldSettings
-    key: GuildPlayerMaxNum
+    key: OptionSettings/GuildPlayerMaxNum
     type: int
     help: "Maximum number of players allowed in a guild."
   - name: Item Container Force Mark Dirty Interval
     section: /Script/Pal.PalGameWorldSettings
-    key: ItemContainerForceMarkDirtyInterval
+    key: OptionSettings/ItemContainerForceMarkDirtyInterval
     type: float
     default: 300.0
     help: "Interval in seconds to force mark item containers as dirty for saving."
   - name: Item Weight Rate
     section: /Script/Pal.PalGameWorldSettings
-    key: ItemWeightRate
+    key: OptionSettings/ItemWeightRate
     type: float
     default: 1.0
     help: "Multiplier for the weight of items carried by players."
   - name: Log Format Type
     section: /Script/Pal.PalGameWorldSettings
-    key: LogFormatType
+    key: OptionSettings/LogFormatType
     type: str
     options:
       - Text
@@ -181,122 +186,122 @@ world:
     help: "Type of log format to use for server logging."
   - name: Max Building Limit Num
     section: /Script/Pal.PalGameWorldSettings
-    key: MaxBuildingLimitNum
+    key: OptionSettings/MaxBuildingLimitNum
     type: int
     help: "Maximum number of buildings allowed per player."
   - name: Night Time Speed Rate
     section: /Script/Pal.PalGameWorldSettings
-    key: NightTimeSpeedRate
+    key: OptionSettings/NightTimeSpeedRate
     type: float
     default: 1.0
     help: "Multiplier for the speed of nighttime in the game world."
   - name: Pal Auto HP Regen Rate
     section: /Script/Pal.PalGameWorldSettings
-    key: PalAutoHpRegeneRate
+    key: OptionSettings/PalAutoHpRegeneRate
     type: float
     default: 1.0
     help: "Multiplier for the automatic health regeneration rate of PALs."
   - name: Pal Auto HP Regen Rate in Sleep
     section: /Script/Pal.PalGameWorldSettings
-    key: PalAutoHpRegeneRateInSleep
+    key: OptionSettings/PalAutoHpRegeneRateInSleep
     type: float
     default: 1.0
     help: "Multiplier for the automatic health regeneration rate of PALs while sleeping."
   - name: Pal Capture Rate
     section: /Script/Pal.PalGameWorldSettings
-    key: PalCaptureRate
+    key: OptionSettings/PalCaptureRate
     type: float
     default: 1.0
     help: "Multiplier for the capture rate of PALs."
   - name: Pal Damage Rate Attack
     section: /Script/Pal.PalGameWorldSettings
-    key: PalDamageRateAttack
+    key: OptionSettings/PalDamageRateAttack
     type: float
     default: 1.0
     help: "Damage from Pals Multiplier"
   - name: Pal Damage Rate Defense
     section: /Script/Pal.PalGameWorldSettings
-    key: PalDamageRateDefense
+    key: OptionSettings/PalDamageRateDefense
     type: float
     default: 1.0
     help: "Damage to Pals Multiplier"
   - name: Pal Egg Default Hatching Time
     section: /Script/Pal.PalGameWorldSettings
-    key: PalEggDefaultHatchingTime
+    key: OptionSettings/PalEggDefaultHatchingTime
     type: float
     help: "Default hatching time for PAL eggs in seconds."
   - name: Pal Spawn Num Rate
     section: /Script/Pal.PalGameWorldSettings
-    key: PalSpawnNumRate
+    key: OptionSettings/PalSpawnNumRate
     type: float
     default: 1.0
     help: "Multiplier for the number of PALs that spawn in the game world."
   - name: Pal Stamina Decrease Rate
     section: /Script/Pal.PalGameWorldSettings
-    key: PalStaminaDecreaceRate
+    key: OptionSettings/PalStaminaDecreaceRate
     type: float
     default: 1.0
     help: "Multiplier for the stamina decrease rate of PALs."
   - name: Pal Stomach Decrease Rate
     section: /Script/Pal.PalGameWorldSettings
-    key: PalStomachDecreaceRate
+    key: OptionSettings/PalStomachDecreaceRate
     type: float
     default: 1.0
     help: "Multiplier for the stomach decrease rate of PALs."
   - name: Player Auto HP Regen Rate
     section: /Script/Pal.PalGameWorldSettings
-    key: PlayerAutoHpRegeneRate
+    key: OptionSettings/PlayerAutoHpRegeneRate
     type: float
     default: 1.0
     help: "Multiplier for the automatic health regeneration rate of players."
   - name: Player Auto HP Regen Rate in Sleep
     section: /Script/Pal.PalGameWorldSettings
-    key: PlayerAutoHpRegeneRateInSleep
+    key: OptionSettings/PlayerAutoHpRegeneRateInSleep
     type: float
     default: 1.0
     help: "Multiplier for the automatic health regeneration rate of players while sleeping."
   - name: Player Damage Rate Attack
     section: /Script/Pal.PalGameWorldSettings
-    key: PlayerDamageRateAttack
+    key: OptionSettings/PlayerDamageRateAttack
     type: float
     default: 1.0
     help: "Damage from Players Multiplier"
   - name: Player Damage Rate Defense
     section: /Script/Pal.PalGameWorldSettings
-    key: PlayerDamageRateDefense
+    key: OptionSettings/PlayerDamageRateDefense
     type: float
     default: 1.0
     help: "Damage to Players Multiplier"
   - name: Player Stamina Decrease Rate
     section: /Script/Pal.PalGameWorldSettings
-    key: PlayerStaminaDecreaceRate
+    key: OptionSettings/PlayerStaminaDecreaceRate
     type: float
     default: 1.0
     help: "Multiplier for the stamina decrease rate of players."
   - name: Player Stomach Decrease Rate
     section: /Script/Pal.PalGameWorldSettings
-    key: PlayerStomachDecreaceRate
+    key: OptionSettings/PlayerStomachDecreaceRate
     type: float
     default: 1.0
     help: "Multiplier for the stomach decrease rate of players."
   - name: Public IP
     section: /Script/Pal.PalGameWorldSettings
-    key: PublicIP
+    key: OptionSettings/PublicIP
     type: str
     help: "Explicitly specify an external public IP in the community server settings"
   - name: Public Port
     section: /Script/Pal.PalGameWorldSettings
-    key: PublicPort
+    key: OptionSettings/PublicPort
     type: int
     help: "Explicitly specify the external public port in the community server configuration. (This setting does not change the server's listen port.)"
   - name: Randomizer Seed
     section: /Script/Pal.PalGameWorldSettings
-    key: RandomizerSeed
+    key: OptionSettings/RandomizerSeed
     type: str
     help: "Seed value for randomizer mode to ensure consistent world generation."
   - name: Randomizer Type
     section: /Script/Pal.PalGameWorldSettings
-    key: RandomizerType
+    key: OptionSettings/RandomizerType
     type: str
     options:
       - None
@@ -305,52 +310,52 @@ world:
     help: "Random Pal Mode"
   - name: RCON Enabled
     section: /Script/Pal.PalGameWorldSettings
-    key: RconEnabled
+    key: OptionSettings/RconEnabled
     type: bool
     help: "If true, enables RCON (Remote Console) access to the server."
   - name: RCON Port
     section: /Script/Pal.PalGameWorldSettings
-    key: RconPort
+    key: OptionSettings/RconPort
     type: int
     help: "Port number for RCON access to the server."
   - name: REST API Enabled
     section: /Script/Pal.PalGameWorldSettings
-    key: RestApiEnabled
+    key: OptionSettings/RestApiEnabled
     type: bool
     help: "If true, enables the REST API for server management."
   - name: REST API Port
     section: /Script/Pal.PalGameWorldSettings
-    key: RestApiPort
+    key: OptionSettings/RestApiPort
     type: int
     help: "Port number for the REST API."
   - name: Server Description
     section: /Script/Pal.PalGameWorldSettings
-    key: ServerDescription
+    key: OptionSettings/ServerDescription
     type: str
     help: "Description of the server displayed in the server browser."
   - name: Server Name
     section: /Script/Pal.PalGameWorldSettings
-    key: ServerName
+    key: OptionSettings/ServerName
     type: str
     help: "Name of the server displayed in the server browser."
   - name: Server Password
     section: /Script/Pal.PalGameWorldSettings
-    key: ServerPassword
+    key: OptionSettings/ServerPassword
     type: str
     help: "Password required to join the server."
   - name: Server Player Max Num
     section: /Script/Pal.PalGameWorldSettings
-    key: ServerPlayerMaxNum
+    key: OptionSettings/ServerPlayerMaxNum
     type: int
     help: "Maximum number of players allowed on the server."
   - name: Server Replicate Pawn Cull Distance
     section: /Script/Pal.PalGameWorldSettings
-    key: ServerReplicatePawnCullDistance
+    key: OptionSettings/ServerReplicatePawnCullDistance
     type: float
     help: "Pal sync distance from player (cm). Min 5000 ~ Max 15000"
   - name: Supply Drop Span
     section: /Script/Pal.PalGameWorldSettings
-    key: SupplyDropSpan
+    key: OptionSettings/SupplyDropSpan
     type: float
     help: "Interval in minutes between supply drops."
 manager:
