@@ -29,7 +29,6 @@ import json
 import shutil
 import base64
 import time
-from pprint import pprint
 import configparser
 import re
 import tempfile
@@ -1745,7 +1744,7 @@ class BaseConfig:
 			return value
 
 	@classmethod
-	def convert_from_system_type(cls, value: Union[str, int, bool, list], val_type: str) -> Union[str, list]:
+	def convert_from_system_type(cls, value: Union[str, int, bool, list, float], val_type: str) -> Union[str, list]:
 		"""
 		Convert a system type value to a string for storage
 		:param value:
@@ -1766,6 +1765,9 @@ class BaseConfig:
 			else:
 				# Assume comma-separated string
 				return [item.strip() for item in str(value).split(',')]
+		elif val_type == 'float':
+			# Unreal likes floats to be stored with 6 decimal places
+			return f'{float(value):.6f}'
 		else:
 			return str(value)
 
