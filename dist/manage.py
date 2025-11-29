@@ -29,10 +29,11 @@ import json
 import shutil
 import base64
 import time
+from pprint import pprint
 import configparser
+import re
 import tempfile
 import argparse
-import re
 
 def get_enabled_firewall() -> str:
 	"""
@@ -1611,20 +1612,21 @@ class HTTPService(BaseService):
 			if method == 'POST' and data is not None:
 				data = bytearray(json.dumps(data), 'utf-8')
 				req.add_header('Content-Length', str(len(data)))
-				with request.urlopen(req, data) as resp:
+				with request.urlopen(req, data, timeout=2) as resp:
 					ret = resp.read().decode('utf-8')
 					if ret == '':
 						return None
 					else:
 						return json.loads(ret)
 			else:
-				with request.urlopen(req) as resp:
+				with request.urlopen(req, timeout=2) as resp:
 					ret = resp.read().decode('utf-8')
 					if ret == '':
 						return None
 					else:
 						return json.loads(ret)
-		except:
+		except Exception as e:
+			print(str(e), file=sys.stderr)
 			return None
 
 	def is_api_enabled(self) -> bool:
@@ -2233,6 +2235,28 @@ class UnrealConfig(BaseConfig):
 					self._data.append(section)
 		self._is_changed = False
 
+	def _skip_escaping(self, s):
+		"""
+		Simple check to see if a given value should have escaping skipped.
+
+		:param s:
+		:return:
+		"""
+		if not isinstance(s, str):
+			# ints/floats do not require escaping
+			return isinstance(s, (int, float, bool))
+
+		if s == 'True' or s == 'False':
+			# Boolean values do not require escaping
+			return True
+
+		if s == '':
+			# Empty values always require quoting
+			return False
+
+		# match integers and decimals (optional leading +/-)
+		return re.match(r'^[+-]?\d+(?:\.\d+)?$', s) is not None
+
 	def _parse_struct(self, struct_str: str) -> dict:
 		"""
 		Parse a UE struct string into a dictionary
@@ -2341,11 +2365,12 @@ class UnrealConfig(BaseConfig):
 				value = struct_data[key]
 				if isinstance(value, list):
 					val_str = '(' + ','.join(value) + ')'
-				elif value == '' or ':' in value or ',' in value or '_' in value or ' ' in value:
-					# Needs quoting
-					val_str = '"%s"' % value.replace('"', '\\"')
+				elif self._skip_escaping(value):
+					# No quoting required
+					val_str = str(value)
 				else:
-					val_str = value
+					# Default for structs is to quote values.
+					val_str = '"%s"' % value.replace('"', '\\"')
 				parts.append('%s=%s' % (key, val_str))
 			return '(' + ','.join(parts) + ')'
 

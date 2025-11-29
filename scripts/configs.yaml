@@ -197,7 +197,7 @@ world:
     help: "Multiplier for the speed of nighttime in the game world."
   - name: Pal Auto HP Regen Rate
     section: /Script/Pal.PalGameWorldSettings
-    key: OptionSettings/PalAutoHpRegeneRate
+    key: OptionSettings/PalAutoHPRegeneRate
     type: float
     default: 1.0
     help: "Multiplier for the automatic health regeneration rate of PALs."
@@ -250,7 +250,7 @@ world:
     help: "Multiplier for the stomach decrease rate of PALs."
   - name: Player Auto HP Regen Rate
     section: /Script/Pal.PalGameWorldSettings
-    key: OptionSettings/PlayerAutoHpRegeneRate
+    key: OptionSettings/PlayerAutoHPRegeneRate
     type: float
     default: 1.0
     help: "Multiplier for the automatic health regeneration rate of players."
@@ -310,22 +310,22 @@ world:
     help: "Random Pal Mode"
   - name: RCON Enabled
     section: /Script/Pal.PalGameWorldSettings
-    key: OptionSettings/RconEnabled
+    key: OptionSettings/RCONEnabled
     type: bool
     help: "If true, enables RCON (Remote Console) access to the server."
   - name: RCON Port
     section: /Script/Pal.PalGameWorldSettings
-    key: OptionSettings/RconPort
+    key: OptionSettings/RCONPort
     type: int
     help: "Port number for RCON access to the server."
   - name: REST API Enabled
     section: /Script/Pal.PalGameWorldSettings
-    key: OptionSettings/RestApiEnabled
+    key: OptionSettings/RESTAPIEnabled
     type: bool
     help: "If true, enables the REST API for server management."
   - name: REST API Port
     section: /Script/Pal.PalGameWorldSettings
-    key: OptionSettings/RestApiPort
+    key: OptionSettings/RESTAPIPort
     type: int
     help: "Port number for the REST API."
   - name: Server Description
