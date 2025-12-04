@@ -3151,9 +3151,6 @@ def run_manager(game):
 
 here = os.path.dirname(os.path.realpath(__file__))
 
-# Require sudo / root for starting/stopping the service
-IS_SUDO = os.geteuid() == 0
-
 
 class GameApp(SteamApp):
 	"""
@@ -3179,13 +3176,7 @@ class GameApp(SteamApp):
 
 		:return:
 		"""
-		'''
-		files = ['banned-ips.json', 'banned-players.json', 'ops.json', 'whitelist.json']
-		for service in self.get_services():
-			files.append(service.get_name())
-		return files
-		'''
-		return None
+		return ['SaveGames']
 
 	def get_save_directory(self) -> Union[str, None]:
 		"""
@@ -3193,7 +3184,7 @@ class GameApp(SteamApp):
 
 		:return:
 		"""
-		return os.path.join(here, 'AppFiles')
+		return os.path.join(here, 'AppFiles', 'Pal', 'Saved')
 
 
 class GameService(HTTPService):
@@ -3330,7 +3321,7 @@ def menu_first_run(game: GameApp):
 	"""
 	print_header('First Run Configuration')
 
-	if not IS_SUDO:
+	if os.geteuid() != 0:
 		print('ERROR: Please run this script with sudo to perform first-run configuration.')
 		sys.exit(1)
 
