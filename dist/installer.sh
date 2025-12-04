@@ -42,7 +42,7 @@
 ############################################
 
 # Name of the game (used to create the directory)
-INSTALLER_VERSION="v20251129"
+INSTALLER_VERSION="v20251129~DEV"
 GAME="Palworld"
 GAME_DESC="Palworld Dedicated Server"
 REPO="BitsNBytes25/Palworld-Installer"
