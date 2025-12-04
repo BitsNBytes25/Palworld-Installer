@@ -827,7 +827,16 @@ function install_application() {
 
 	# download game, use install_steamcmd, or some other install source
 	install_steamcmd
-	sudo -u $GAME_USER /usr/games/steamcmd +force_install_dir $GAME_DIR/AppFiles +login anonymous +app_update ${STEAM_ID} validate +quit
+
+	# Install the management script
+	install_management
+
+	# To perform the installation via the game manager, use the following:
+	# Use the management script to install the game server
+	if ! $GAME_DIR/manage.py --update; then
+		echo "Could not install $GAME_DESC, exiting" >&2
+		exit 1
+	fi
 
 	# Install system service file to be loaded by systemd
     cat > /etc/systemd/system/${GAME_SERVICE}.service <<EOF
@@ -845,7 +854,6 @@ WorkingDirectory=$GAME_DIR/AppFiles
 Environment=XDG_RUNTIME_DIR=/run/user/$(id -u $GAME_USER)
 # Only required for games which utilize Proton
 #Environment="STEAM_COMPAT_CLIENT_INSTALL_PATH=$STEAM_DIR"
-ExecStartPre=/usr/games/steamcmd +force_install_dir $GAME_DIR/AppFiles +login anonymous +app_update ${STEAM_ID} validate +quit
 ExecStart=$GAME_DIR/AppFiles/PalServer.sh -port=${PORT} -publiclobby -useperfthreads -NoAsyncLoadingThread -UseMuilthreadForDS -NumberOfWorkerThreadsServer=${THREADS}
 ExecStop=$GAME_DIR/manage.py --pre-stop --service ${GAME_SERVICE}
 ExecStartPost=$GAME_DIR/manage.py --post-start --service ${GAME_SERVICE}
@@ -1325,6 +1333,10 @@ manager:
 EOF
 	chown $GAME_USER:$GAME_USER "$GAME_DIR/configs.yaml"
 
+	# Most games use .settings.ini for manager settings
+	touch "$GAME_DIR/.settings.ini"
+	chown $GAME_USER:$GAME_USER "$GAME_DIR/.settings.ini"
+
 	# If a pyenv is required:
 	sudo -u $GAME_USER python3 -m venv "$GAME_DIR/.venv"
 	sudo -u $GAME_USER "$GAME_DIR/.venv/bin/pip" install --upgrade pip
@@ -1439,8 +1451,6 @@ if [ "$MODE" == "install" ]; then
 	fi
 
 	install_application
-
-	install_management
 
 	postinstall
 
