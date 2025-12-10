@@ -178,6 +178,16 @@ class GameService(HTTPService):
 		"""
 		self._api_cmd('/v1/api/save', 'POST')
 
+	def get_port_definitions(self) -> list:
+		"""
+		Get a list of port definitions for this service
+		:return:
+		"""
+		return [
+			(self.get_port(), 'udp', '%s game port' % self.game.desc),
+			('REST API Port', 'tcp', '%s REST port' % self.game.desc)
+		]
+
 
 def menu_first_run(game: GameApp):
 	"""
