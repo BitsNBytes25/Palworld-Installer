@@ -1407,6 +1407,20 @@ world:
     type: float
     help: "Interval in minutes between supply drops."
 manager:
+  - name: Steam Branch
+    section: Steam
+    key: steam_branch
+    type: str
+    default: public
+    help: "The Steam branch to install the server from (e.g., stable, experimental)."
+    group: Settings
+  - name: Steam Branch Password
+    section: Steam
+    key: steam_branch_password
+    type: str
+    default: ""
+    help: "The password for accessing a private Steam branch, if applicable."
+    group: Settings
   - name: Shutdown Warning 5 Minutes
     section: Messages
     key: shutdown_5min

@@ -114,8 +114,8 @@ class GameApp(SteamApp):
 			logging.info('Creating missing Palworld configuration directory...')
 			os.makedirs(check_dest)
 
-		check_src = os.path.join(self.get_app_directory(), 'DefaultPalWorldSettings.ini')
-		check_dest = os.path.join(self.get_app_directory(), 'Pal/Saved/Config/LinuxServer/PalWorldSettings.ini')
+		check_src = os.path.join(utils.get_app_directory(), 'AppFiles/DefaultPalWorldSettings.ini')
+		check_dest = os.path.join(utils.get_app_directory(), 'AppFiles/Pal/Saved/Config/LinuxServer/PalWorldSettings.ini')
 		if os.path.exists(check_src) and not os.path.exists(check_dest):
 			logging.info('Copying default Palworld configuration file...')
 			shutil.copy2(check_src, check_dest)
@@ -137,13 +137,13 @@ class GameApp(SteamApp):
 		return True
 
 	def post_update(self):
-		path = os.path.join(self.get_app_directory(), 'Pal/Binaries/Linux/PalServer-Linux-Shipping')
+		path = os.path.join(utils.get_app_directory(), 'AppFiles/Pal/Binaries/Linux/PalServer-Linux-Shipping')
 
 		if os.path.exists(path):
 			os.chmod(path, 0o755)
 
-		steam_source = os.path.join(self.get_app_directory(), 'linux64/steamclient.so')
-		steam_dest = os.path.join(self.get_app_directory(), 'Pal/Binaries/Linux/steamclient.so')
+		steam_source = os.path.join(utils.get_app_directory(), 'AppFiles/linux64/steamclient.so')
+		steam_dest = os.path.join(utils.get_app_directory(), 'AppFiles/Pal/Binaries/Linux/steamclient.so')
 		if os.path.exists(steam_source) and not os.path.exists(steam_dest):
 			shutil.copy2(steam_source, steam_dest)
 			utils.ensure_file_ownership(steam_dest)
@@ -176,7 +176,7 @@ class GameService(HTTPService):
 		"""
 		if option == 'Number Of Worker Threads Server':
 			# This defaults to the number of CPUs present
-			return os.cpu_count().toString()
+			return str(os.cpu_count())
 		else:
 			return super().get_option_default(option)
 
