@@ -30,7 +30,6 @@
 #   SKIP_FIREWALL=--skip-firewall - Do not install or configure a system firewall
 #   NONINTERACTIVE=--non-interactive - Run the installer in non-interactive mode (useful for scripted installs)
 #   BRANCH=--branch=<str> - Use a specific branch of the management script repository DEFAULT=main
-#   THREADS=--threads=<int> - Specify the number of threads to allocate to the game server DEFAULT=AUTO
 #
 # Changelog:
 #   20251127 - Migrated to new Warlock baseline
@@ -175,13 +174,6 @@ function upgrade_application() {
 
 function postinstall() {
 	print_header "Performing postinstall"
-
-	# Ensure configuration file exists, (Palworld doesn't do a great job at filling in incomplete configs)
-	[ -d "$GAME_DIR/AppFiles/Pal/Saved/Config/LinuxServer" ] || \
-		sudo -u $GAME_USER mkdir -p "$GAME_DIR/AppFiles/Pal/Saved/Config/LinuxServer"
-
-	[ -e "$GAME_DIR/AppFiles/Pal/Saved/Config/LinuxServer/PalWorldSettings.ini" ] || \
-		sudo -u $GAME_USER cp "$GAME_DIR/AppFiles/DefaultPalWorldSettings.ini" "$GAME_DIR/AppFiles/Pal/Saved/Config/LinuxServer/PalWorldSettings.ini"
 
 	# First run setup
 	$GAME_DIR/manage.py first-run

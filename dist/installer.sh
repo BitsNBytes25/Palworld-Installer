@@ -30,7 +30,6 @@
 #   --skip-firewall  - Do not install or configure a system firewall
 #   --non-interactive  - Run the installer in non-interactive mode (useful for scripted installs)
 #   --branch=<str> - Use a specific branch of the management script repository DEFAULT=main
-#   --threads=<int> - Specify the number of threads to allocate to the game server DEFAULT=AUTO
 #
 # Changelog:
 #   20251127 - Migrated to new Warlock baseline
@@ -62,7 +61,6 @@ Options:
     --skip-firewall  - Do not install or configure a system firewall
     --non-interactive  - Run the installer in non-interactive mode (useful for scripted installs)
     --branch=<str> - Use a specific branch of the management script repository DEFAULT=main
-    --threads=<int> - Specify the number of threads to allocate to the game server DEFAULT=AUTO
 
 Please ensure to run this script as root (or at least with sudo)
 
@@ -77,7 +75,6 @@ OVERRIDE_DIR=""
 SKIP_FIREWALL=0
 NONINTERACTIVE=0
 BRANCH="main"
-THREADS="AUTO"
 while [ "$#" -gt 0 ]; do
 	case "$1" in
 		--uninstall) MODE_UNINSTALL=1;;
@@ -92,11 +89,6 @@ while [ "$#" -gt 0 ]; do
 			[ "$1" == "--branch" ] && shift 1 && BRANCH="$1" || BRANCH="${1#*=}"
 			[ "${BRANCH:0:1}" == "'" ] && [ "${BRANCH:0-1}" == "'" ] && BRANCH="${BRANCH:1:-1}"
 			[ "${BRANCH:0:1}" == '"' ] && [ "${BRANCH:0-1}" == '"' ] && BRANCH="${BRANCH:1:-1}"
-			;;
-		--threads=*|--threads)
-			[ "$1" == "--threads" ] && shift 1 && THREADS="$1" || THREADS="${1#*=}"
-			[ "${THREADS:0:1}" == "'" ] && [ "${THREADS:0-1}" == "'" ] && THREADS="${THREADS:1:-1}"
-			[ "${THREADS:0:1}" == '"' ] && [ "${THREADS:0-1}" == '"' ] && THREADS="${THREADS:1:-1}"
 			;;
 		-h|--help) usage;;
 		*) echo "Unknown argument: $1" >&2; usage;;
@@ -1648,13 +1640,6 @@ function upgrade_application() {
 
 function postinstall() {
 	print_header "Performing postinstall"
-
-	# Ensure configuration file exists, (Palworld doesn't do a great job at filling in incomplete configs)
-	[ -d "$GAME_DIR/AppFiles/Pal/Saved/Config/LinuxServer" ] || \
-		sudo -u $GAME_USER mkdir -p "$GAME_DIR/AppFiles/Pal/Saved/Config/LinuxServer"
-
-	[ -e "$GAME_DIR/AppFiles/Pal/Saved/Config/LinuxServer/PalWorldSettings.ini" ] || \
-		sudo -u $GAME_USER cp "$GAME_DIR/AppFiles/DefaultPalWorldSettings.ini" "$GAME_DIR/AppFiles/Pal/Saved/Config/LinuxServer/PalWorldSettings.ini"
 
 	# First run setup
 	$GAME_DIR/manage.py first-run

@@ -95,6 +95,19 @@ class GameApp(SteamApp):
 		# It's a good idea to ensure the game is installed on first run.
 		self.update()
 
+		# Ensure configuration file exists, (Palworld doesn't do a great job at filling in incomplete configs)
+		check_dest = os.path.join(self.get_app_directory(), 'Pal/Saved/Config/LinuxServer')
+		if not os.path.exists(check_dest):
+			logging.info('Creating missing Palworld configuration directory...')
+			os.makedirs(check_dest)
+
+		check_src = os.path.join(self.get_app_directory(), 'DefaultPalWorldSettings.ini')
+		check_dest = os.path.join(self.get_app_directory(), 'Pal/Saved/Config/LinuxServer/PalWorldSettings.ini')
+		if os.path.exists(check_src) and not os.path.exists(check_dest):
+			logging.info('Copying default Palworld configuration file...')
+			shutil.copy2(check_src, check_dest)
+			utils.ensure_file_ownership(check_dest)
+
 		# First run is a great time to auto-create some services for this game too
 		services = self.get_services()
 		if len(services) == 0:

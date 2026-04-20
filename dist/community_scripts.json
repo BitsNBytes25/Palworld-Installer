@@ -12,8 +12,7 @@
             "--dir=<str> - Use a custom installation directory instead of the default (optional)",
             "--skip-firewall  - Do not install or configure a system firewall",
             "--non-interactive  - Run the installer in non-interactive mode (useful for scripted installs)",
-            "--branch=<str> - Use a specific branch of the management script repository DEFAULT=main",
-            "--threads=<int> - Specify the number of threads to allocate to the game server DEFAULT=AUTO"
+            "--branch=<str> - Use a specific branch of the management script repository DEFAULT=main"
         ],
         "default_timeout": "600",
         "shell": "shell",
