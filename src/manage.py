@@ -70,6 +70,8 @@ class GameApp(SteamApp):
 		self.mod_handler = GameMod
 		self.service_prefix = 'palworld-'
 
+		self.disabled_features = {'create_service', 'cmd', 'mods'}
+
 		self.configs = {
 			'manager': INIConfig('manager', os.path.join(utils.get_base_directory(), '.settings.ini'))
 		}
@@ -160,6 +162,7 @@ class GameService(HTTPService):
 			'world': UnrealConfig('world', os.path.join(self.get_app_directory(), 'Pal/Saved/Config/LinuxServer/PalWorldSettings.ini')),
 			'service': INIConfig('service', os.path.join(utils.get_base_directory(), 'Configs', 'service.%s.ini' % self.service))
 		}
+		self.configs['world'].always_escape_strings = True
 		self.load()
 
 	def get_option_default(self, option: str) -> str:
@@ -190,8 +193,8 @@ class GameService(HTTPService):
 		if option == 'Public Port':
 			# Update firewall for game port change
 			if previous_value:
-				Firewall.remove(int(previous_value), 'UDP')
-			Firewall.allow(int(new_value), 'UDP', 'Allow %s game port' % self.game.desc)
+				Firewall.remove(int(previous_value), 'udp')
+			Firewall.allow(int(new_value), 'udp', 'Allow %s game port' % self.game.desc)
 			success = True
 			rebuild = True
 		elif option in ('Public Lobby', 'Use Perf Threads', 'No Async Loading Thread', 'Use Muilthread For DS', 'Number Of Worker Threads Server'):
@@ -313,7 +316,7 @@ class GameService(HTTPService):
 		:return:
 		"""
 		return [
-			(self.get_port(), 'udp', '%s game port' % self.game.name),
+			('Public Port', 'udp', '%s game port' % self.game.name),
 			('REST API Port', 'tcp', '%s REST port' % self.game.name)
 		]
 
