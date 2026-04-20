@@ -209,7 +209,7 @@ class GameService(HTTPService):
 			self.reload()
 		return success
 
-	def get_save_files(self) -> Union[list, None]:
+	def get_save_files(self) -> list | None:
 		"""
 		Get a list of save files / directories for the game server
 
@@ -217,7 +217,7 @@ class GameService(HTTPService):
 		"""
 		return ['SaveGames']
 
-	def get_save_directory(self) -> Union[str, None]:
+	def get_save_directory(self) -> str | None:
 		"""
 		Get the save directory for the game server
 
@@ -257,7 +257,7 @@ class GameService(HTTPService):
 		"""
 		return 'admin'
 
-	def get_player_count(self) -> Union[int, None]:
+	def get_player_count(self) -> int | None:
 		"""
 		Get the current player count on the server, or None if the API is unavailable
 		:return:
@@ -283,7 +283,7 @@ class GameService(HTTPService):
 		"""
 		return self.get_option_value('Server Name')
 
-	def get_port(self) -> Union[int, None]:
+	def get_port(self) -> int | None:
 		"""
 		Get the primary port of the service, or None if not applicable
 		:return:
