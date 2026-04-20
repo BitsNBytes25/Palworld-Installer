@@ -129,9 +129,17 @@ class GameApp(SteamApp):
 		if os.path.exists(path):
 			os.chmod(path, 0o755)
 
+		# Palworld has this in the official start script; may be needed somewhere.
 		steam_source = os.path.join(utils.get_app_directory(), 'AppFiles/linux64/steamclient.so')
 		steam_dest = os.path.join(utils.get_app_directory(), 'AppFiles/Pal/Binaries/Linux/steamclient.so')
 		if os.path.exists(steam_source) and not os.path.exists(steam_dest):
+			shutil.copy2(steam_source, steam_dest)
+			utils.ensure_file_ownership(steam_dest)
+
+		# Starting Palworld checks for THIS file however, so ensure it's there.
+		steam_dest = os.path.join(utils.get_home_directory(), '.steam/sdk64/steamclient.so')
+		if not os.path.exists(steam_dest):
+			utils.ensure_file_parent_exists(steam_dest)
 			shutil.copy2(steam_source, steam_dest)
 			utils.ensure_file_ownership(steam_dest)
 
@@ -343,6 +351,8 @@ class GameService(HTTPService):
 			self.set_option('Admin Password', random_password)
 		if not self.option_has_value('REST API Enabled'):
 			self.set_option('REST API Enabled', True)
+		if not self.option_has_value('Server Name'):
+			self.set_option('Server Name', 'My Palworld Server')
 
 
 if __name__ == '__main__':

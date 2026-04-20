@@ -356,6 +356,8 @@ class GameService(HTTPService):
 			self.set_option('Admin Password', random_password)
 		if not self.option_has_value('REST API Enabled'):
 			self.set_option('REST API Enabled', True)
+		if not self.option_has_value('Server Name'):
+			self.set_option('Server Name', 'My Palworld Server')
 
 
 if __name__ == '__main__':
