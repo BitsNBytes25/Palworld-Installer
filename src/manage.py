@@ -67,10 +67,10 @@ class GameApp(SteamApp):
 		self.desc = 'Palworld Dedicated Server'
 		self.steam_id = '2394010'
 		self.service_handler = GameService
-		self.mod_handler = GameMod
+		# self.mod_handler = GameMod
 		self.service_prefix = 'palworld-'
 
-		self.disabled_features = {'create_service', 'cmd', 'mods'}
+		self.disabled_features = {'create_service', 'cmd'}
 
 		self.configs = {
 			'manager': INIConfig('manager', os.path.join(utils.get_base_directory(), '.settings.ini'))
