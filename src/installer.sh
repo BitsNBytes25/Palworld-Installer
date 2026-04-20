@@ -120,7 +120,7 @@ function install_application() {
 	install_steamcmd
 
 	# Install the management script
-	install_warlock_manager "$REPO" "$BRANCH" "2.2.4"
+	install_warlock_manager "$REPO" "$BRANCH" "2.2.5"
 
 	if [ -n "$WARLOCK_GUID" ]; then
 		# Register Warlock

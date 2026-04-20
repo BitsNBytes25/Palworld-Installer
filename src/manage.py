@@ -71,7 +71,7 @@ class GameApp(SteamApp):
 		self.service_prefix = 'palworld-'
 
 		self.configs = {
-			'manager': INIConfig('manager', os.path.join(utils.get_app_directory(), '.settings.ini'))
+			'manager': INIConfig('manager', os.path.join(utils.get_base_directory(), '.settings.ini'))
 		}
 		self.load()
 
@@ -88,21 +88,21 @@ class GameApp(SteamApp):
 		super().first_run()
 
 		# Create necessary directories if applicable
-		utils.makedirs(os.path.join(utils.get_app_directory(), 'Configs'))
-		utils.makedirs(os.path.join(utils.get_app_directory(), 'Packages'))
+		utils.makedirs(os.path.join(utils.get_base_directory(), 'Configs'))
+		utils.makedirs(os.path.join(utils.get_base_directory(), 'Packages'))
 
 		# Install the game with Steam.
 		# It's a good idea to ensure the game is installed on first run.
 		self.update()
 
 		# Ensure configuration file exists, (Palworld doesn't do a great job at filling in incomplete configs)
-		check_dest = os.path.join(self.get_app_directory(), 'Pal/Saved/Config/LinuxServer')
+		check_dest = os.path.join(utils.get_base_directory(), 'AppFiles/Pal/Saved/Config/LinuxServer')
 		if not os.path.exists(check_dest):
 			logging.info('Creating missing Palworld configuration directory...')
 			os.makedirs(check_dest)
 
-		check_src = os.path.join(utils.get_app_directory(), 'AppFiles/DefaultPalWorldSettings.ini')
-		check_dest = os.path.join(utils.get_app_directory(), 'AppFiles/Pal/Saved/Config/LinuxServer/PalWorldSettings.ini')
+		check_src = os.path.join(utils.get_base_directory(), 'AppFiles/DefaultPalWorldSettings.ini')
+		check_dest = os.path.join(utils.get_base_directory(), 'AppFiles/Pal/Saved/Config/LinuxServer/PalWorldSettings.ini')
 		if os.path.exists(check_src) and not os.path.exists(check_dest):
 			logging.info('Copying default Palworld configuration file...')
 			shutil.copy2(check_src, check_dest)
@@ -124,14 +124,14 @@ class GameApp(SteamApp):
 		return True
 
 	def post_update(self):
-		path = os.path.join(utils.get_app_directory(), 'AppFiles/Pal/Binaries/Linux/PalServer-Linux-Shipping')
+		path = os.path.join(utils.get_base_directory(), 'AppFiles/Pal/Binaries/Linux/PalServer-Linux-Shipping')
 
 		if os.path.exists(path):
 			os.chmod(path, 0o755)
 
 		# Palworld has this in the official start script; may be needed somewhere.
-		steam_source = os.path.join(utils.get_app_directory(), 'AppFiles/linux64/steamclient.so')
-		steam_dest = os.path.join(utils.get_app_directory(), 'AppFiles/Pal/Binaries/Linux/steamclient.so')
+		steam_source = os.path.join(utils.get_base_directory(), 'AppFiles/linux64/steamclient.so')
+		steam_dest = os.path.join(utils.get_base_directory(), 'AppFiles/Pal/Binaries/Linux/steamclient.so')
 		if os.path.exists(steam_source) and not os.path.exists(steam_dest):
 			shutil.copy2(steam_source, steam_dest)
 			utils.ensure_file_ownership(steam_dest)
@@ -158,7 +158,7 @@ class GameService(HTTPService):
 		self.game = game
 		self.configs = {
 			'world': UnrealConfig('world', os.path.join(self.get_app_directory(), 'Pal/Saved/Config/LinuxServer/PalWorldSettings.ini')),
-			'service': INIConfig('service', os.path.join(utils.get_app_directory(), 'Configs', 'service.%s.ini' % self.service))
+			'service': INIConfig('service', os.path.join(utils.get_base_directory(), 'Configs', 'service.%s.ini' % self.service))
 		}
 		self.load()
 
