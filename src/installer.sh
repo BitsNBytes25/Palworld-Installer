@@ -29,7 +29,7 @@
 #   OVERRIDE_DIR=--dir=<str> - Use a custom installation directory instead of the default (optional)
 #   SKIP_FIREWALL=--skip-firewall - Do not install or configure a system firewall
 #   NONINTERACTIVE=--non-interactive - Run the installer in non-interactive mode (useful for scripted installs)
-#   PORT=--port=<int> - Specify a custom port for the game server to use DEFAULT=8211
+#   BRANCH=--branch=<str> - Use a specific branch of the management script repository DEFAULT=main
 #   THREADS=--threads=<int> - Specify the number of threads to allocate to the game server DEFAULT=AUTO
 #
 # Changelog:
@@ -64,6 +64,7 @@ GAME_SERVICE="palworld-server"
 # scriptlet:bz_eval_tui/print_header.sh
 # scriptlet:steam/install-steamcmd.sh
 # scriptlet:ufw/install.sh
+# scriptlet:warlock/install_warlock_manager.sh
 
 if [ "$THREADS" == "AUTO" ]; then
 	let "THREADS=$(nproc --all)-1"
@@ -83,10 +84,7 @@ print_header "$GAME_DESC *unofficial* Installer ${INSTALLER_VERSION}"
 #   GAME_DIR     - Directory to install the game into
 #   STEAM_ID     - Steam App ID of the game
 #   GAME_DESC    - Description of the game (for logging purposes)
-#   GAME_SERVICE - Service name to install with Systemd
 #   SAVE_DIR     - Directory to store game save files
-#   PORT         - Port number the game server will use
-#   THREADS	     - Number of threads the game server will use
 #   FIREWALL     - Whether to install and configure a firewall (1 = yes, 0 = no)
 #
 function install_application() {
@@ -99,6 +97,12 @@ function install_application() {
 		useradd -m -U $GAME_USER
 	fi
 
+	# Ensure the target directory exists and is owned by the game user
+	if [ ! -d "$GAME_DIR" ]; then
+		mkdir -p "$GAME_DIR"
+		chown $GAME_USER:$GAME_USER "$GAME_DIR"
+	fi
+
 	# Preliminary requirements
 	package_install curl sudo python3-venv
 
@@ -107,31 +111,17 @@ function install_application() {
 			# No firewall installed, go ahead and install UFW
 			install_ufw
 		fi
-
-		firewall_allow --port ${PORT} --udp --comment "${GAME_DESC} Game Port"
 	fi
 
 	[ -e "$GAME_DIR/AppFiles" ] || sudo -u $GAME_USER mkdir -p "$GAME_DIR/AppFiles"
+	[ -e "$GAME_DIR/Packages" ] || sudo -u $GAME_USER mkdir -p "$GAME_DIR/Packages"
 
 
 	# download game, use install_steamcmd, or some other install source
 	install_steamcmd
 
 	# Install the management script
-	install_management
-
-	# To perform the installation via the game manager, use the following:
-	# Use the management script to install the game server
-	if ! $GAME_DIR/manage.py --update; then
-		echo "Could not install $GAME_DESC, exiting" >&2
-		exit 1
-	fi
-
-	# Install system service file to be loaded by systemd
-    cat > /etc/systemd/system/${GAME_SERVICE}.service <<EOF
-# script:systemd-template.service
-EOF
-    systemctl daemon-reload
+	install_warlock_manager "$REPO" "$BRANCH" "2.2.4"
 
 	if [ -n "$WARLOCK_GUID" ]; then
 		# Register Warlock
@@ -141,53 +131,46 @@ EOF
 }
 
 ##
-# Install the management script from the project's repo
+# Upgrade logic for 1.0 to 2.2 to handle migration of ENV and overrides
 #
-# Expects the following variables:
-#   GAME_USER    - User account to install the game under
-#   GAME_DIR     - Directory to install the game into
-#
-function install_management() {
-	print_header "Performing install_management"
+function upgrade_application_1_0() {
+	local LEGACY_SERVICE="palworld-server"
+	local SERVICE_PATH="/etc/systemd/system/${LEGACY_SERVICE}.service"
 
-	# Install management console and its dependencies
-	local SRC=""
+	# Migrate existing service to new format
+	# This gets overwrote by the manager, but is needed to tell the system that the service is here.
+	if [ -e "${SERVICE_PATH}" ] && [ ! -e "$GAME_DIR/Environments" ]; then
+		sudo -u $GAME_USER mkdir -p "$GAME_DIR/Environments"
+		# Extract out current environment variables from the systemd file into their own dedicated file
+		egrep '^Environment' "${SERVICE_PATH}" | sed 's:^Environment=::' > "$GAME_DIR/Environments/${LEGACY_SERVICE}.env"
+		chown $GAME_USER:$GAME_USER "$GAME_DIR/Environments/${LEGACY_SERVICE}.env"
+		# Trim out those envs now that they're not longer required
+		cat "${SERVICE_PATH}" | egrep -v '^Environment=' > "${SERVICE_PATH}.new"
+		mv "${SERVICE_PATH}.new" "${SERVICE_PATH}"
 
-	if [[ "$INSTALLER_VERSION" == *"~DEV"* ]]; then
-		# Development version, pull from dev branch
-		SRC="https://raw.githubusercontent.com/${REPO}/refs/heads/dev/dist/manage.py"
-	else
-		# Stable version, pull from tagged release
-		SRC="https://raw.githubusercontent.com/${REPO}/refs/tags/${INSTALLER_VERSION}/dist/manage.py"
+		if [ -e "${SERVICE_PATH}.d" ] && [ -e "${SERVICE_PATH}.d/override.conf" ]; then
+			# If there is an override, (used in version 1.0),
+			# grab the CLI and move it to a notes document so the operator can manually review it.
+			touch "$GAME_DIR/Notes.txt"
+			echo "    !! IMPORTANT - Service commands are now generated dynamically, " >> "$GAME_DIR/Notes.txt"
+			echo "    so please manually migrate the following CLI options to your game." >> "$GAME_DIR/Notes.txt"
+			echo "" >> "$GAME_DIR/Notes.txt"
+			egrep '^ExecStart=' "${SERVICE_PATH}.d/override.conf" >> "$GAME_DIR/Notes.txt"
+			chown $GAME_USER:$GAME_USER "$GAME_DIR/Notes.txt"
+			rm -fr "${SERVICE_PATH}.d/override.conf"
+			rm -fr "${SERVICE_PATH}.d"
+		fi
 	fi
+}
 
-	if ! download "$SRC" "$GAME_DIR/manage.py"; then
-    		# Fallback to main branch
-    		echo "Download failed, falling back to main branch..." >&2
-    		SRC="https://raw.githubusercontent.com/${REPO}/refs/heads/main/dist/manage.py"
-    		if ! download "$SRC" "$GAME_DIR/manage.py"; then
-    			echo "Could not download management script!" >&2
-    			exit 1
-    		fi
-    	fi
+##
+# Perform any steps necessary for upgrading an existing installation.
+#
+function upgrade_application() {
+	print_header "Existing installation detected, performing upgrade"
 
-	chown $GAME_USER:$GAME_USER "$GAME_DIR/manage.py"
-	chmod +x "$GAME_DIR/manage.py"
-
-	# Install configuration definitions
-	cat > "$GAME_DIR/configs.yaml" <<EOF
-# script:configs.yaml
-EOF
-	chown $GAME_USER:$GAME_USER "$GAME_DIR/configs.yaml"
-
-	# Most games use .settings.ini for manager settings
-	touch "$GAME_DIR/.settings.ini"
-	chown $GAME_USER:$GAME_USER "$GAME_DIR/.settings.ini"
-
-	# If a pyenv is required:
-	sudo -u $GAME_USER python3 -m venv "$GAME_DIR/.venv"
-	sudo -u $GAME_USER "$GAME_DIR/.venv/bin/pip" install --upgrade pip
-	sudo -u $GAME_USER "$GAME_DIR/.venv/bin/pip" install pyyaml
+	# Uncomment if you need this
+	upgrade_application_1_0
 }
 
 function postinstall() {
@@ -201,7 +184,7 @@ function postinstall() {
 		sudo -u $GAME_USER cp "$GAME_DIR/AppFiles/DefaultPalWorldSettings.ini" "$GAME_DIR/AppFiles/Pal/Saved/Config/LinuxServer/PalWorldSettings.ini"
 
 	# First run setup
-	$GAME_DIR/manage.py --first-run
+	$GAME_DIR/manage.py first-run
 }
 
 ##
@@ -215,11 +198,7 @@ function postinstall() {
 function uninstall_application() {
 	print_header "Performing uninstall_application"
 
-	systemctl disable $GAME_SERVICE
-	systemctl stop $GAME_SERVICE
-
-	# Service files
-	[ -e "/etc/systemd/system/${GAME_SERVICE}.service" ] && rm "/etc/systemd/system/${GAME_SERVICE}.service"
+	$GAME_DIR/manage.py remove --confirm
 
 	# Game files
 	[ -d "$GAME_DIR" ] && rm -rf "$GAME_DIR/AppFiles"
@@ -241,16 +220,28 @@ function uninstall_application() {
 
 if [ $MODE_UNINSTALL -eq 1 ]; then
 	MODE="uninstall"
+elif [ -e "$GAME_DIR/AppFiles" ]; then
+	MODE="reinstall"
 else
 	# Default to install mode
 	MODE="install"
 fi
 
 
-if systemctl -q is-active $GAME_SERVICE; then
-	echo "$GAME_DESC service is currently running, please stop it before running this installer."
-	echo "You can do this with: sudo systemctl stop $GAME_SERVICE"
-	exit 1
+if [ -e "$GAME_DIR/Environments" ]; then
+	# Check for existing service files to determine if the service is running.
+	# This is important to prevent conflicts with the installer trying to modify files while the service is running.
+	for envfile in "$GAME_DIR/Environments/"*.env; do
+		SERVICE=$(basename "$envfile" .env)
+		# If there are no services, this will just be '*.env'.
+		if [ "$SERVICE" != "*" ]; then
+			if systemctl -q is-active $SERVICE; then
+				echo "$GAME_DESC service is currently running, please stop all instances before running this installer."
+				echo "You can do this with: sudo systemctl stop $SERVICE"
+				exit 1
+			fi
+		fi
+	done
 fi
 
 if [ -n "$OVERRIDE_DIR" ]; then
@@ -276,11 +267,6 @@ else
 	echo "Using default installation directory of ${GAME_DIR}"
 fi
 
-if [ -e "/etc/systemd/system/${GAME_SERVICE}.service" ]; then
-	EXISTING=1
-else
-	EXISTING=0
-fi
 
 ############################################
 ## Installer
@@ -305,6 +291,26 @@ if [ "$MODE" == "install" ]; then
     print_header "$GAME_DESC Installation Complete"
 fi
 
+# Operations needed to be performed during a reinstallation / upgrade
+if [ "$MODE" == "reinstall" ]; then
+
+	FIREWALL=0
+
+	upgrade_application
+
+	install_application
+
+	postinstall
+
+	# Print some instructions and useful tips
+    print_header "$GAME_DESC Installation Complete"
+
+	# If there are notes generated during installation, print them now.
+    if [ -e "$GAME_DIR/Notes.txt" ]; then
+    	cat "$GAME_DIR/Notes.txt"
+	fi
+fi
+
 if [ "$MODE" == "uninstall" ]; then
 	if [ $NONINTERACTIVE -eq 0 ]; then
 		if prompt_yn -q --invert --default-no "This will remove all game binary content"; then
@@ -316,7 +322,7 @@ if [ "$MODE" == "uninstall" ]; then
 	fi
 
 	if prompt_yn -q --default-yes "Perform a backup before everything is wiped?"; then
-		$GAME_DIR/manage.py --backup
+		$GAME_DIR/manage.py backup
 	fi
 
 	uninstall_application

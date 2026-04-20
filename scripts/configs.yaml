@@ -229,7 +229,7 @@ world:
     section: /Script/Pal.PalGameWorldSettings
     key: OptionSettings/PalEggDefaultHatchingTime
     type: float
-    help: "Default hatching time for PAL eggs in seconds."
+    help: "Default hatching time for HUGE eggs in hours, (large and normal eggs will be even faster)."
   - name: Pal Spawn Num Rate
     section: /Script/Pal.PalGameWorldSettings
     key: OptionSettings/PalSpawnNumRate
@@ -289,11 +289,14 @@ world:
     key: OptionSettings/PublicIP
     type: str
     help: "Explicitly specify an external public IP in the community server settings"
+    group: Settings
   - name: Public Port
     section: /Script/Pal.PalGameWorldSettings
     key: OptionSettings/PublicPort
     type: int
-    help: "Explicitly specify the external public port in the community server configuration. (This setting does not change the server's listen port.)"
+    help: "Public port Palworld listens on"
+    group: Settings
+    default: 8211
   - name: Randomizer Seed
     section: /Script/Pal.PalGameWorldSettings
     key: OptionSettings/RandomizerSeed
@@ -328,6 +331,7 @@ world:
     key: OptionSettings/RESTAPIPort
     type: int
     help: "Port number for the REST API."
+    default: 8212
   - name: Server Description
     section: /Script/Pal.PalGameWorldSettings
     key: OptionSettings/ServerDescription
@@ -424,3 +428,33 @@ manager:
     key: webhook
     type: str
     help: "The webhook URL for sending server status updates to a Discord channel."
+service:
+  - name: Public Lobby
+    key: publiclobby
+    section: flag
+    group: Settings
+    type: bool
+    default: true
+  - name: Use Perf Threads
+    key: useperfthreads
+    section: flag
+    group: Settings
+    type: bool
+    default: true
+  - name: No Async Loading Thread
+    key: NoAsyncLoadingThread
+    section: flag
+    group: Settings
+    type: bool
+    default: true
+  - name: Use Muilthread For DS
+    key: UseMuilthreadForDS
+    section: flag
+    group: Settings
+    type: bool
+    default: true
+  - name: Number Of Worker Threads Server
+    key: NumberOfWorkerThreadsServer
+    section: flag
+    group: Settings
+    type: int

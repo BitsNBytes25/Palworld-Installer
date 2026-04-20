@@ -1,22 +1,58 @@
 #!/usr/bin/env python3
-import pwd
+import os
+import shutil
+
+# To allow running as a standalone script without installing the package, include the venv path for imports.
+# This will set the include path for this path to .venv to allow packages installed therein to be utilized.
+#
+# IMPORTANT - any imports that are needed for the script to run must be after this,
+# otherwise the imports will fail when running as a standalone script.
+# import:org_python/venv_path_include.py
+
+import logging
 import random
 import string
-from scriptlets._common.firewall_allow import *
-from scriptlets._common.firewall_remove import *
-from scriptlets.bz_eval_tui.prompt_yn import *
-from scriptlets.bz_eval_tui.prompt_text import *
-from scriptlets.bz_eval_tui.table import *
-from scriptlets.bz_eval_tui.print_header import *
-from scriptlets._common.get_wan_ip import *
-# import:org_python/venv_path_include.py
-from scriptlets.warlock.steam_app import *
-from scriptlets.warlock.http_service import *
-from scriptlets.warlock.ini_config import *
-from scriptlets.warlock.unreal_config import *
-from scriptlets.warlock.default_run import *
 
-here = os.path.dirname(os.path.realpath(__file__))
+# Import the appropriate type of handler for the game installer.
+# Common options are:
+# from warlock_manager.apps.base_app import BaseApp
+from warlock_manager.apps.steam_app import SteamApp
+
+# Import the appropriate type of handler for the game services.
+# Common options are:
+# from warlock_manager.services.base_service import BaseService
+# from warlock_manager.services.rcon_service import RCONService
+# from warlock_manager.services.socket_service import SocketService
+from warlock_manager.services.http_service import HTTPService
+
+# Import the various configuration handlers used by this game.
+# Common options are:
+# from warlock_manager.config.cli_config import CLIConfig
+from warlock_manager.config.ini_config import INIConfig
+# from warlock_manager.config.json_config import JSONConfig
+from warlock_manager.config.properties_config import PropertiesConfig
+from warlock_manager.config.unreal_config import UnrealConfig
+
+# Load the application runner responsible for interfacing with CLI arguments
+# and providing default functionality for running the manager.
+from warlock_manager.libs.app_runner import app_runner
+
+# If your script manages the firewall, (recommended), import the Firewall library
+from warlock_manager.libs.firewall import Firewall
+
+# Utilities provided by Warlock that are common to many applications
+from warlock_manager.libs import utils
+
+# Useful in some games
+from warlock_manager.formatters.cli_formatter import cli_formatter
+
+# Select the baseline for mod support
+# from warlock_manager.mods.base_mod import BaseMod
+from warlock_manager.mods.warlock_nexus_mod import WarlockNexusMod
+
+
+class GameMod(WarlockNexusMod):
+	pass
 
 
 class GameApp(SteamApp):
@@ -30,28 +66,61 @@ class GameApp(SteamApp):
 		self.name = 'Palworld'
 		self.desc = 'Palworld Dedicated Server'
 		self.steam_id = '2394010'
-		self.services = ('palworld-server',)
+		self.service_handler = GameService
+		self.mod_handler = GameMod
+		self.service_prefix = 'palworld-'
 
 		self.configs = {
-			'manager': INIConfig('manager', os.path.join(here, '.settings.ini'))
+			'manager': INIConfig('manager', os.path.join(utils.get_app_directory(), '.settings.ini'))
 		}
 		self.load()
 
-	def get_save_files(self) -> Union[list, None]:
+	def first_run(self) -> bool:
 		"""
-		Get a list of save files / directories for the game server
+		Perform any first-run configuration needed for this game
 
 		:return:
 		"""
-		return ['SaveGames']
+		if os.geteuid() != 0:
+			logging.error('Please run this script with sudo to perform first-run configuration.')
+			return False
 
-	def get_save_directory(self) -> Union[str, None]:
-		"""
-		Get the save directory for the game server
+		super().first_run()
 
-		:return:
-		"""
-		return os.path.join(here, 'AppFiles', 'Pal', 'Saved')
+		# Create necessary directories if applicable
+		utils.makedirs(os.path.join(utils.get_app_directory(), 'Configs'))
+		utils.makedirs(os.path.join(utils.get_app_directory(), 'Packages'))
+
+		# Install the game with Steam.
+		# It's a good idea to ensure the game is installed on first run.
+		self.update()
+
+		# First run is a great time to auto-create some services for this game too
+		services = self.get_services()
+		if len(services) == 0:
+			# No services detected, create one.
+			logging.info('No services detected, creating one...')
+			self.create_service('palworld-server')
+		else:
+			# Ensure services match new format
+			for service in services:
+				logging.info('Ensuring %s service file is on latest format' % service.service)
+				service.build_systemd_config()
+				service.reload()
+
+		return True
+
+	def post_update(self):
+		path = os.path.join(self.get_app_directory(), 'Pal/Binaries/Linux/PalServer-Linux-Shipping')
+
+		if os.path.exists(path):
+			os.chmod(path, 0o755)
+
+		steam_source = os.path.join(self.get_app_directory(), 'linux64/steamclient.so')
+		steam_dest = os.path.join(self.get_app_directory(), 'Pal/Binaries/Linux/steamclient.so')
+		if os.path.exists(steam_source) and not os.path.exists(steam_dest):
+			shutil.copy2(steam_source, steam_dest)
+			utils.ensure_file_ownership(steam_dest)
 
 
 class GameService(HTTPService):
@@ -67,9 +136,68 @@ class GameService(HTTPService):
 		self.service = service
 		self.game = game
 		self.configs = {
-			'world': UnrealConfig('world', os.path.join(here, 'AppFiles/Pal/Saved/Config/LinuxServer/PalWorldSettings.ini'))
+			'world': UnrealConfig('world', os.path.join(self.get_app_directory(), 'Pal/Saved/Config/LinuxServer/PalWorldSettings.ini')),
+			'service': INIConfig('service', os.path.join(utils.get_app_directory(), 'Configs', 'service.%s.ini' % self.service))
 		}
 		self.load()
+
+	def get_option_default(self, option: str) -> str:
+		"""
+		Get the default value of a configuration option
+
+		:param option:
+		:return:
+		"""
+		if option == 'Number Of Worker Threads Server':
+			# This defaults to the number of CPUs present
+			return os.cpu_count().toString()
+		else:
+			return super().get_option_default(option)
+
+	def option_value_updated(self, option: str, previous_value, new_value) -> bool | None:
+		"""
+		Handle any special actions needed when an option value is updated
+		:param option:
+		:param previous_value:
+		:param new_value:
+		:return:
+		"""
+		success = None
+		rebuild = False
+
+		# Special option actions
+		if option == 'Public Port':
+			# Update firewall for game port change
+			if previous_value:
+				Firewall.remove(int(previous_value), 'UDP')
+			Firewall.allow(int(new_value), 'UDP', 'Allow %s game port' % self.game.desc)
+			success = True
+			rebuild = True
+		elif option in ('Public Lobby', 'Use Perf Threads', 'No Async Loading Thread', 'Use Muilthread For DS', 'Number Of Worker Threads Server'):
+			success = True
+			rebuild = True
+
+		if rebuild:
+			# For games that need to regenerate systemd to apply changes
+			self.build_systemd_config()
+			self.reload()
+		return success
+
+	def get_save_files(self) -> Union[list, None]:
+		"""
+		Get a list of save files / directories for the game server
+
+		:return:
+		"""
+		return ['SaveGames']
+
+	def get_save_directory(self) -> Union[str, None]:
+		"""
+		Get the save directory for the game server
+
+		:return:
+		"""
+		return os.path.join(self.get_app_directory(), 'Pal', 'Saved')
 
 	def is_api_enabled(self) -> bool:
 		"""
@@ -134,34 +262,14 @@ class GameService(HTTPService):
 		Get the primary port of the service, or None if not applicable
 		:return:
 		"""
-		# The server port for Palworld is stored within the systemd service file.
-		if os.path.exists('/etc/systemd/system/%s.service' % self.service):
-			with open('/etc/systemd/system/%s.service' % self.service, 'r') as f:
-				for line in f:
-					if line.strip().startswith('ExecStart='):
-						parts = line.strip().split(' ')
-						for part in parts:
-							if part.startswith('-port='):
-								return int(part.split('=')[1])
-		return None
+		return self.get_option_value('Public Port')
 
 	def get_game_pid(self) -> int:
 		"""
 		Get the primary game process PID of the actual game server, or 0 if not running
 		:return:
 		"""
-		# For services that use a wrapper script, the actual game process will be different and needs looked up.
-		# There's no quick way to get the game process PID from systemd,
-		# so use ps to find the process based on the map name
-		processes = subprocess.run([
-			'ps', 'axh', '-o', 'pid,cmd'
-		], stdout=subprocess.PIPE).stdout.decode().strip()
-		exe = os.path.join(here, 'AppFiles/Pal/Binaries/Linux/')
-		for line in processes.split('\n'):
-			pid, cmd = line.strip().split(' ', 1)
-			if cmd.startswith(exe):
-				return int(line.strip().split(' ')[0])
-		return 0
+		return self.get_pid()
 
 	def send_message(self, message: str):
 		"""
@@ -184,35 +292,46 @@ class GameService(HTTPService):
 		:return:
 		"""
 		return [
-			(self.get_port(), 'udp', '%s game port' % self.game.desc),
-			('REST API Port', 'tcp', '%s REST port' % self.game.desc)
+			(self.get_port(), 'udp', '%s game port' % self.game.name),
+			('REST API Port', 'tcp', '%s REST port' % self.game.name)
 		]
 
+	def get_executable(self) -> str:
+		"""
+		Get the full executable for this game service
+		:return:
+		"""
+		path = os.path.join(self.get_app_directory(), 'Pal/Binaries/Linux/PalServer-Linux-Shipping')
 
-def menu_first_run(game: GameApp):
-	"""
-	Perform first-run configuration for setting up the game server initially
+		# Append UE arguments necessary to run the game
+		path += ' Pal'
 
-	:param game:
-	:return:
-	"""
-	print_header('First Run Configuration')
+		# Append parameters for the game server
+		path += ' -port=%s' % self.get_port()
 
-	if os.geteuid() != 0:
-		print('ERROR: Please run this script with sudo to perform first-run configuration.')
-		sys.exit(1)
+		# Add arguments for the service, if applicable
+		args = cli_formatter(self.configs['service'], 'flag', true_value=True, false_value=False)
+		if args:
+			path += ' ' + args
 
-	svc = game.get_services()[0]
+		return path
 
-	if not svc.option_has_value('Admin Password'):
-		# Generate a random password for RCON
-		random_password = ''.join(random.choices(string.ascii_letters + string.digits, k=32))
-		svc.set_option('Admin Password', random_password)
-	if not svc.option_has_value('REST API Enabled'):
-		svc.set_option('REST API Enabled', True)
-	if not svc.option_has_value('REST API Port'):
-		svc.set_option('REST API Port', 8212)
+	def create_service(self):
+		"""
+		Create the systemd service for this game, including the service file and environment file
+		:return:
+		"""
+
+		super().create_service()
+
+		if not self.option_has_value('Admin Password'):
+			# Generate a random password for RCON
+			random_password = ''.join(random.choices(string.ascii_letters + string.digits, k=32))
+			self.set_option('Admin Password', random_password)
+		if not self.option_has_value('REST API Enabled'):
+			self.set_option('REST API Enabled', True)
+
 
 if __name__ == '__main__':
-	game = GameApp()
-	run_manager(game)
+	app = app_runner(GameApp())
+	app()
